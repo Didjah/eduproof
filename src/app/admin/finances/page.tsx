@@ -9,6 +9,7 @@ type Paiement = {
   type: string
   statut: string
   date_paiement: string
+  etudiants: { nom: string; prenom: string } | null
 }
 
 export default function FinancesPage() {
@@ -30,7 +31,7 @@ export default function FinancesPage() {
 
   async function loadPaiements() {
     setLoading(true)
-    const { data } = await supabase.from('paiements').select('*').order('date_paiement', { ascending: false })
+    const { data } = await supabase.from('paiements').select('*, etudiants(nom,prenom)').order('date_paiement', { ascending: false })
     setPaiements(data || [])
     setLoading(false)
   }
@@ -134,7 +135,7 @@ export default function FinancesPage() {
               <tbody>
                 {paiements.map((p, i) => (
                   <tr key={p.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    <td className="px-6 py-4 font-medium text-gray-900">—</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{p.etudiants ? p.etudiants.nom + ' ' + p.etudiants.prenom : '—'}</td>
                     <td className="px-6 py-4 text-gray-700">{p.type}</td>
                     <td className="px-6 py-4 font-semibold text-gray-900">{p.montant?.toLocaleString()} FCFA</td>
                     <td className="px-6 py-4">
