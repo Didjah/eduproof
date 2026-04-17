@@ -47,7 +47,7 @@ export default function EtudiantsPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+      <header className="bg-indigo-700 text-white px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="text-2xl">👨‍🎓</span>
           <span className="text-xl font-bold">Étudiants</span>
@@ -55,10 +55,10 @@ export default function EtudiantsPage() {
         <Link href="/admin" className="text-indigo-200 hover:text-white text-sm">← Dashboard</Link>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Liste des étudiants ({etudiants.length})</h1>
-          <button onClick={() => setShowForm(!showForm)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+          <button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
             + Ajouter un étudiant
           </button>
         </div>
@@ -67,7 +67,7 @@ export default function EtudiantsPage() {
         {showForm && (
           <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
             <h2 className="text-lg font-semibold mb-4">Nouvel étudiant</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input placeholder="Nom *" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})}
                 className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <input placeholder="Prénom *" value={form.prenom} onChange={e => setForm({...form, prenom: e.target.value})}
@@ -77,11 +77,11 @@ export default function EtudiantsPage() {
               <input placeholder="WhatsApp" value={form.whatsapp} onChange={e => setForm({...form, whatsapp: e.target.value})}
                 className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             </div>
-            <div className="flex gap-3 mt-4">
-              <button onClick={addEtudiant} disabled={saving} className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+              <button onClick={addEtudiant} disabled={saving} className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
                 {saving ? "Enregistrement..." : "Enregistrer"}
               </button>
-              <button onClick={() => setShowForm(false)} className="border px-6 py-2 rounded-lg hover:bg-gray-50">Annuler</button>
+              <button onClick={() => setShowForm(false)} className="w-full sm:w-auto border px-6 py-2 rounded-lg hover:bg-gray-50">Annuler</button>
             </div>
           </div>
         )}
@@ -95,8 +95,8 @@ export default function EtudiantsPage() {
             <p>Aucun étudiant enregistré. Ajoutez le premier !</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Nom</th>

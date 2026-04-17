@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+      <header className="bg-indigo-700 text-white px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🎓</span>
           <span className="text-xl font-bold">EduProof — Admin</span>
@@ -29,11 +29,11 @@ export default function AdminDashboard() {
         <Link href="/" className="text-indigo-200 hover:text-white text-sm">← Accueil</Link>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-8">Tableau de bord</h1>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
           {[
             { label: "Étudiants", value: stats.etudiants, icon: "👨‍🎓", color: "bg-blue-500" },
             { label: "Classes", value: stats.classes, icon: "🏫", color: "bg-green-500" },

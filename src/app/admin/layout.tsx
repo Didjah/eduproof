@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!auth) {
     return (
       <div className="min-h-screen bg-indigo-50 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-sm">
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-10 w-full max-w-sm">
           <div className="flex flex-col items-center mb-8">
             <div className="bg-indigo-700 text-white rounded-2xl w-14 h-14 flex items-center justify-center text-2xl font-bold mb-3">
               E

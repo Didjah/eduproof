@@ -49,7 +49,7 @@ export default function PresencesPage() {
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <header className="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+      <header className="bg-indigo-700 text-white px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="text-2xl">📋</span>
           <span className="text-xl font-bold">Présences</span>
@@ -57,11 +57,11 @@ export default function PresencesPage() {
         <Link href="/admin" className="text-indigo-200 hover:text-white text-sm">← Dashboard</Link>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
         {/* Sélection classe + date */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
           <h2 className="text-lg font-semibold mb-4">Paramètres de l'appel</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-sm text-gray-600 mb-1 block">Classe</label>
               <select value={selectedClasse} onChange={e => setSelectedClasse(e.target.value)}
@@ -81,7 +81,7 @@ export default function PresencesPage() {
         {selectedClasse && etudiants.length > 0 && (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               {[
                 { label: "Présents", value: stats.present, color: "bg-green-100 text-green-700" },
                 { label: "Absents", value: stats.absent, color: "bg-red-100 text-red-700" },
@@ -95,8 +95,8 @@ export default function PresencesPage() {
             </div>
 
             {/* Liste appel */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-6">
-              <table className="w-full">
+            <div className="bg-white rounded-2xl shadow-sm overflow-x-auto mb-6">
+              <table className="w-full min-w-[400px]">
                 <thead className="bg-gray-50 border-b">
                   <tr>
                     <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Étudiant</th>
