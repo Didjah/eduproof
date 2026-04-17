@@ -22,7 +22,7 @@ export default function PresencesPage() {
 
   useEffect(() => {
     if (!selectedClasse) return
-    supabase.from('etudiants').select('*').order('nom').then(({ data }) => {
+    supabase.from('etudiants').select('*').eq('classe_id', selectedClasse).order('nom').then(({ data }) => {
       setEtudiants(data || [])
       const init: Record<string, string> = {}
       data?.forEach(e => init[e.id] = 'present')
