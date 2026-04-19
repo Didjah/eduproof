@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { msgAnnonce } from "@/utils/whatsapp"
 
 type Annonce = {
   id: string
@@ -159,7 +160,12 @@ export default function AnnoncesPage() {
                     <td className="px-6 py-4 text-gray-500 text-sm whitespace-nowrap">
                       {new Date(a.date).toLocaleDateString('fr-FR')}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => window.open('https://wa.me/?text=' + encodeURIComponent(msgAnnonce(a.titre, a.contenu)), '_blank')}
+                        className="text-green-600 hover:text-green-800 text-sm mr-3"
+                        title="Envoyer aux parents via WhatsApp"
+                      >📲 Envoyer</button>
                       <button
                         onClick={() => deleteAnnonce(a.id)}
                         className="text-red-400 hover:text-red-600 text-sm"

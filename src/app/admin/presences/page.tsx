@@ -2,8 +2,9 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { ouvrirWhatsApp, msgAbsence } from "@/utils/whatsapp"
 
-type Etudiant = { id: string; nom: string; prenom: string }
+type Etudiant = { id: string; nom: string; prenom: string; parent?: { telephone: string } | null }
 type Classe = { id: string; nom: string }
 type Presence = { etudiant_id: string; statut: string }
 
@@ -22,7 +23,7 @@ export default function PresencesPage() {
 
   useEffect(() => {
     if (!selectedClasse) return
-    supabase.from('etudiants').select('*').eq('classe_id', selectedClasse).order('nom').then(({ data }) => {
+    supabase.from('etudiants').select('*, parent:utilisateurs!parent_id(telephone)').eq('classe_id', selectedClasse).order('nom').then(({ data }) => {
       setEtudiants(data || [])
       const init: Record<string, string> = {}
       data?.forEach(e => init[e.id] = 'present')
@@ -103,6 +104,7 @@ export default function PresencesPage() {
                     <th className="text-center px-4 py-3 text-sm font-semibold text-green-600">✅ Présent</th>
                     <th className="text-center px-4 py-3 text-sm font-semibold text-red-600">❌ Absent</th>
                     <th className="text-center px-4 py-3 text-sm font-semibold text-yellow-600">⏰ Retard</th>
+                    <th className="text-center px-4 py-3 text-sm font-semibold text-gray-400">WhatsApp</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,6 +119,15 @@ export default function PresencesPage() {
                             className="w-4 h-4 cursor-pointer" />
                         </td>
                       ))}
+                      <td className="text-center px-4 py-4">
+                        {(presences[e.id] === 'absent' || presences[e.id] === 'retard') && e.parent?.telephone && (
+                          <button
+                            onClick={() => ouvrirWhatsApp(e.parent!.telephone, msgAbsence(e.prenom, e.nom, date))}
+                            className="text-green-600 hover:text-green-800 text-xl"
+                            title="Envoyer WhatsApp au parent"
+                          >📲</button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

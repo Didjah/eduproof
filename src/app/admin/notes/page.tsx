@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { ouvrirWhatsApp, msgNotes } from "@/utils/whatsapp"
 
 type Note = {
   id: string
@@ -13,7 +14,7 @@ type Note = {
   matiere_id: string
 }
 
-type Etudiant = { id: string; nom: string; prenom: string }
+type Etudiant = { id: string; nom: string; prenom: string; parent?: { telephone: string } | null }
 type Matiere = { id: string; nom: string; coefficient: number }
 
 export default function NotesPage() {
@@ -34,7 +35,7 @@ export default function NotesPage() {
 
   useEffect(() => {
     loadNotes()
-    supabase.from('etudiants').select('id,nom,prenom').order('nom').then(({ data }) => setEtudiants(data || []))
+    supabase.from('etudiants').select('id,nom,prenom,parent:utilisateurs!parent_id(telephone)').order('nom').then(({ data }) => setEtudiants(data || []))
     supabase.from('matieres').select('*').order('nom').then(({ data }) => setMatieres(data || []))
   }, [])
 
@@ -154,6 +155,7 @@ export default function NotesPage() {
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Type</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Date</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Commentaire</th>
+                  <th className="px-6 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -174,6 +176,15 @@ export default function NotesPage() {
                       <td className="px-6 py-4 text-gray-600">{n.type_eval}</td>
                       <td className="px-6 py-4 text-gray-500">{n.date}</td>
                       <td className="px-6 py-4 text-gray-500 text-sm">{n.commentaire || "—"}</td>
+                      <td className="px-6 py-4 text-center">
+                        {etudiant?.parent?.telephone && (
+                          <button
+                            onClick={() => ouvrirWhatsApp(etudiant.parent!.telephone, msgNotes(etudiant.prenom, etudiant.nom, matiere?.nom ?? '', n.valeur))}
+                            className="text-green-600 hover:text-green-800 text-xl"
+                            title="Notifier le parent"
+                          >📲</button>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { ouvrirWhatsApp, msgPaiement } from "@/utils/whatsapp"
 
 type Paiement = {
   id: string
@@ -9,7 +10,7 @@ type Paiement = {
   type: string
   statut: string
   date_paiement: string
-  etudiants: { nom: string; prenom: string } | null
+  etudiants: { nom: string; prenom: string; parent?: { telephone: string } | null } | null
 }
 
 export default function FinancesPage() {
@@ -31,7 +32,7 @@ export default function FinancesPage() {
 
   async function loadPaiements() {
     setLoading(true)
-    const { data } = await supabase.from('paiements').select('*, etudiants(nom,prenom)').order('date_paiement', { ascending: false })
+    const { data } = await supabase.from('paiements').select('*, etudiants(nom,prenom,parent:utilisateurs!parent_id(telephone))').order('date_paiement', { ascending: false })
     setPaiements(data || [])
     setLoading(false)
   }
@@ -130,6 +131,7 @@ export default function FinancesPage() {
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Montant</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Statut</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Date</th>
+                  <th className="px-6 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -147,6 +149,15 @@ export default function FinancesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-gray-500">{p.date_paiement}</td>
+                    <td className="px-6 py-4 text-center">
+                      {(p.statut === 'en_attente' || p.statut === 'partiel') && p.etudiants?.parent?.telephone && (
+                        <button
+                          onClick={() => ouvrirWhatsApp(p.etudiants!.parent!.telephone, msgPaiement(p.etudiants!.prenom, p.etudiants!.nom, p.montant.toLocaleString(), p.type))}
+                          className="text-green-600 hover:text-green-800 text-xl"
+                          title="Rappel paiement WhatsApp"
+                        >📲</button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
