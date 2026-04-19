@@ -24,6 +24,7 @@ export default function NotesPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [accesRefuse, setAccesRefuse] = useState(false)
   const [form, setForm] = useState({
     etudiant_id: "",
     matiere_id: "",
@@ -32,6 +33,15 @@ export default function NotesPage() {
     date: new Date().toISOString().split('T')[0],
     commentaire: "",
   })
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('eduproof_user')
+      const user = raw ? JSON.parse(raw) : null
+      if (!user || !['admin', 'directeur', 'prof', 'surveillant'].includes(user.role))
+        setAccesRefuse(true)
+    } catch { setAccesRefuse(true) }
+  }, [])
 
   useEffect(() => {
     loadNotes()
@@ -63,6 +73,19 @@ export default function NotesPage() {
 
   const getEtudiant = (id: string) => etudiants.find(e => e.id === id)
   const getMatiere = (id: string) => matieres.find(m => m.id === id)
+
+  if (accesRefuse) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-sm w-full">
+        <p className="text-5xl mb-4">🔒</p>
+        <p className="text-xl font-bold text-gray-800 mb-2">Accès non autorisé</p>
+        <p className="text-sm text-gray-500 mb-6">Votre rôle ne vous permet pas d'accéder à cette page.</p>
+        <Link href="/admin/finances" className="inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+          ← Aller aux finances
+        </Link>
+      </div>
+    </div>
+  )
 
   return (
     <main className="min-h-screen bg-gray-50">

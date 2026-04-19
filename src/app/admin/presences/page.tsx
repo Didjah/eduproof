@@ -16,6 +16,16 @@ export default function PresencesPage() {
   const [presences, setPresences] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [accesRefuse, setAccesRefuse] = useState(false)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('eduproof_user')
+      const user = raw ? JSON.parse(raw) : null
+      if (!user || !['admin', 'directeur', 'prof', 'surveillant'].includes(user.role))
+        setAccesRefuse(true)
+    } catch { setAccesRefuse(true) }
+  }, [])
 
   useEffect(() => {
     supabase.from('classes').select('*').order('nom').then(({ data }) => setClasses(data || []))
@@ -47,6 +57,19 @@ export default function PresencesPage() {
     absent: Object.values(presences).filter(s => s === 'absent').length,
     retard: Object.values(presences).filter(s => s === 'retard').length,
   }
+
+  if (accesRefuse) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-sm w-full">
+        <p className="text-5xl mb-4">🔒</p>
+        <p className="text-xl font-bold text-gray-800 mb-2">Accès non autorisé</p>
+        <p className="text-sm text-gray-500 mb-6">Votre rôle ne vous permet pas d'accéder à cette page.</p>
+        <Link href="/admin/finances" className="inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+          ← Aller aux finances
+        </Link>
+      </div>
+    </div>
+  )
 
   return (
     <main className="min-h-screen bg-gray-50">

@@ -20,6 +20,16 @@ export default function FinancesPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ etudiant_id: "", montant: "", type: "Scolarité", statut: "paye", date_paiement: new Date().toISOString().split('T')[0] })
   const [saving, setSaving] = useState(false)
+  const [accesRefuse, setAccesRefuse] = useState(false)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('eduproof_user')
+      const user = raw ? JSON.parse(raw) : null
+      if (!user || !['admin', 'directeur', 'secretaire'].includes(user.role))
+        setAccesRefuse(true)
+    } catch { setAccesRefuse(true) }
+  }, [])
 
   const total = paiements.reduce((s, p) => s + (p.montant || 0), 0)
   const payes = paiements.filter(p => p.statut === 'paye').reduce((s, p) => s + (p.montant || 0), 0)
@@ -46,6 +56,19 @@ export default function FinancesPage() {
     setSaving(false)
     loadPaiements()
   }
+
+  if (accesRefuse) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-sm w-full">
+        <p className="text-5xl mb-4">🔒</p>
+        <p className="text-xl font-bold text-gray-800 mb-2">Accès non autorisé</p>
+        <p className="text-sm text-gray-500 mb-6">Votre rôle ne vous permet pas d'accéder à cette page.</p>
+        <Link href="/admin" className="inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition text-sm font-medium">
+          ← Retour au dashboard
+        </Link>
+      </div>
+    </div>
+  )
 
   return (
     <main className="min-h-screen bg-gray-50">

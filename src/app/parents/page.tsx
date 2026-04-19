@@ -1,6 +1,11 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { ouvrirWhatsApp } from '@/utils/whatsapp'
+
+const WA_ECOLE    = "22500000000"
+const EMAIL_ECOLE = "contact@ecole.ci"
+const TEL_ECOLE   = "00000000"
 
 type ParentUser = { id: string; nom: string; prenom: string; role: string; email: string }
 type Etudiant   = { id: string; nom: string; prenom: string; statut: string; classe_id?: string | null }
@@ -122,6 +127,11 @@ export default function ParentsPage() {
     const e = enfants.find(k => k.id === id)
     return e ? `${e.prenom} ${e.nom}` : '—'
   }
+
+  const totalPaiements = paiements.reduce((s, p) => s + (p.montant || 0), 0)
+  const totalPaye      = paiements.filter(p => p.statut === 'paye').reduce((s, p) => s + (p.montant || 0), 0)
+  const resteAPayer    = totalPaiements - totalPaye
+  const absences       = presences.filter(p => p.statut !== 'present')
 
   // ── LOGIN VIEW ──────────────────────────────────────────────────────────────
   if (view === 'login') {
@@ -363,6 +373,101 @@ export default function ParentsPage() {
                 })}
               </div>
             )}
+          </>
+        )}
+
+        {!dataLoading && (
+          <>
+            {/* ── SECTION A : Statut & Absences ── */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm mt-6">
+              <h2 className="font-bold text-gray-800 mb-3 text-base">📋 Statut & Absences</h2>
+              {enfants.map(e => (
+                <div key={e.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <span className="font-medium text-sm text-gray-900">{e.prenom} {e.nom}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    e.statut === 'actif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>{e.statut}</span>
+                </div>
+              ))}
+              {absences.length === 0 ? (
+                <p className="text-sm text-gray-400 mt-3 text-center">Aucune absence enregistrée.</p>
+              ) : (
+                <div className="mt-3 flex flex-col gap-2">
+                  {absences.map(p => {
+                    const badge = PRESENCE_LABELS[p.statut] ?? { label: p.statut, cls: 'bg-gray-100 text-gray-600' }
+                    return (
+                      <div key={p.id} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700">{getEnfantName(p.etudiant_id)} — {fmt(p.date)}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ── SECTION B : Finances ── */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm mt-4">
+              <h2 className="font-bold text-gray-800 mb-3 text-base">💰 Finances</h2>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-gray-900">{totalPaiements.toLocaleString('fr-FR')}</p>
+                  <p className="text-xs text-gray-500">Total (F)</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-green-600">{totalPaye.toLocaleString('fr-FR')}</p>
+                  <p className="text-xs text-gray-500">Payé (F)</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-red-500">{resteAPayer.toLocaleString('fr-FR')}</p>
+                  <p className="text-xs text-gray-500">Reste (F)</p>
+                </div>
+              </div>
+              {paiements.length > 0 && (
+                <div className="flex flex-col gap-2 border-t pt-3">
+                  {paiements.map(p => {
+                    const badge = PAIEMENT_LABELS[p.statut] ?? { label: p.statut, cls: 'bg-gray-100 text-gray-600' }
+                    return (
+                      <div key={p.id} className="flex items-center justify-between text-sm">
+                        <div>
+                          <p className="text-gray-800 font-medium">{p.type}</p>
+                          <p className="text-xs text-gray-400">{fmt(p.date_paiement)}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-semibold text-gray-900">{p.montant.toLocaleString('fr-FR')} F</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ── SECTION C : Réclamation ── */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm mt-4 mb-4">
+              <h2 className="font-bold text-gray-800 mb-3 text-base">📞 Contacter l'école</h2>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => ouvrirWhatsApp(WA_ECOLE, `Bonjour, je suis parent de ${enfants.map(e => e.prenom + ' ' + e.nom).join(', ')}. J'ai une réclamation à formuler.`)}
+                  className="flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl hover:bg-green-100 transition font-medium text-sm"
+                >
+                  <span className="text-xl">📲</span> WhatsApp
+                </button>
+                <button
+                  onClick={() => window.open(`mailto:${EMAIL_ECOLE}?subject=Réclamation - ${enfants.map(e => e.prenom + ' ' + e.nom).join(', ')}`, '_blank')}
+                  className="flex items-center gap-3 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl hover:bg-blue-100 transition font-medium text-sm"
+                >
+                  <span className="text-xl">✉️</span> Email
+                </button>
+                <button
+                  onClick={() => window.open(`tel:${TEL_ECOLE}`, '_blank')}
+                  className="flex items-center gap-3 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-3 rounded-xl hover:bg-indigo-100 transition font-medium text-sm"
+                >
+                  <span className="text-xl">📞</span> Appeler l'école
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>
