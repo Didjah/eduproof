@@ -100,7 +100,7 @@ export default function ElevesPage() {
     if (!etData) { setLoadingDash(false); return }
     setEtudiant(etData)
 
-    const jobs: Promise<void>[] = [
+    const jobs = [
       supabase.from('notes')
         .select('id, valeur, type_eval, date, matieres(nom)')
         .eq('etudiant_id', etData.id)
