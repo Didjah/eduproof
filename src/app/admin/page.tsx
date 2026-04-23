@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [stats, setStats] = useState({ etudiants: 0, classes: 0, paiements: 0 })
+  const [nomEcole, setNomEcole] = useState("")
 
   useEffect(() => {
     try {
@@ -38,12 +39,14 @@ export default function AdminDashboard() {
     } catch { /* layout handles redirect */ }
 
     async function loadStats() {
-      const [{ count: e }, { count: c }, { count: p }] = await Promise.all([
+      const [{ count: e }, { count: c }, { count: p }, { data: ecole }] = await Promise.all([
         supabase.from('etudiants').select('*', { count: 'exact', head: true }),
         supabase.from('classes').select('*', { count: 'exact', head: true }),
         supabase.from('paiements').select('*', { count: 'exact', head: true }),
+        supabase.from('ecoles').select('nom').limit(1).maybeSingle(),
       ])
       setStats({ etudiants: e || 0, classes: c || 0, paiements: p || 0 })
+      if (ecole?.nom) setNomEcole(ecole.nom)
     }
     loadStats()
   }, [])
@@ -63,7 +66,7 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="text-2xl">🎓</span>
-            <span className="text-xl font-bold">EduProof — Admin</span>
+            <span className="text-xl font-bold">{nomEcole || "EduProof — Admin"}</span>
           </div>
           <div className="flex items-center gap-3">
             {user && (
