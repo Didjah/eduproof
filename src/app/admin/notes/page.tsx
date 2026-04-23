@@ -14,7 +14,7 @@ type Note = {
   matiere_id: string
 }
 
-type Etudiant = { id: string; nom: string; prenom: string; parent?: { telephone: string } | null }
+type Etudiant = { id: string; nom: string; prenom: string; parent?: { telephone?: string } | null }
 type Matiere = { id: string; nom: string; coefficient: number }
 
 export default function NotesPage() {
