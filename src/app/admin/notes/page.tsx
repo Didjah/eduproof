@@ -14,7 +14,7 @@ type Note = {
   matiere_id: string
 }
 
-type Etudiant = { id: string; nom: string; prenom: string; parent?: { telephone?: string } | null }
+type Etudiant = { id: string; nom: string; prenom: string; parent?: Array<{ telephone?: string }> | null }
 type Matiere = { id: string; nom: string; coefficient: number }
 
 export default function NotesPage() {
@@ -200,9 +200,9 @@ export default function NotesPage() {
                       <td className="px-6 py-4 text-gray-500">{n.date}</td>
                       <td className="px-6 py-4 text-gray-500 text-sm">{n.commentaire || "—"}</td>
                       <td className="px-6 py-4 text-center">
-                        {etudiant?.parent?.telephone && (
+                        {etudiant?.parent?.[0]?.telephone && (
                           <button
-                            onClick={() => ouvrirWhatsApp(etudiant.parent!.telephone, msgNotes(etudiant.prenom, etudiant.nom, matiere?.nom ?? '', n.valeur))}
+                            onClick={() => ouvrirWhatsApp(etudiant.parent![0].telephone!, msgNotes(etudiant.prenom, etudiant.nom, matiere?.nom ?? '', n.valeur))}
                             className="text-green-600 hover:text-green-800 text-xl"
                             title="Notifier le parent"
                           >📲</button>
