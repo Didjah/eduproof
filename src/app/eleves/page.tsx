@@ -11,7 +11,7 @@ type Note = {
   valeur: number
   type_eval: string
   date: string
-  matieres: { nom: string } | null
+  matieres: { nom: string } | { nom: string }[] | null
 }
 
 type Absence = {
@@ -26,12 +26,17 @@ type Devoir = {
   titre: string
   contenu: string
   date_limite: string | null
-  matieres: { nom: string } | null
+  matieres: { nom: string } | { nom: string }[] | null
 }
 
 const DEVOIR_STYLES: Record<string, string> = {
   Devoir: "bg-orange-100 text-orange-700",
   Examen: "bg-red-100 text-red-700",
+}
+
+function matNom(m: { nom: string } | { nom: string }[] | null | undefined): string | null {
+  if (!m) return null
+  return Array.isArray(m) ? (m[0]?.nom ?? null) : m.nom
 }
 
 export default function ElevesPage() {
@@ -106,7 +111,7 @@ export default function ElevesPage() {
         .eq('etudiant_id', etData.id)
         .order('date', { ascending: false })
         .limit(6)
-        .then(({ data }) => setNotes((data as Note[]) || [])),
+        .then(({ data }) => setNotes((data as unknown as Note[]) || [])),
 
       supabase.from('presences')
         .select('id, date, statut')
@@ -131,7 +136,7 @@ export default function ElevesPage() {
           .in('type', ['Devoir', 'Examen'])
           .order('date_limite', { ascending: true, nullsFirst: false })
           .limit(5)
-          .then(({ data }) => setDevoirs((data as Devoir[]) || []))
+          .then(({ data }) => setDevoirs((data as unknown as Devoir[]) || []))
       )
     }
 
@@ -262,7 +267,7 @@ export default function ElevesPage() {
                     <div key={n.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-md font-medium shrink-0 max-w-[100px] truncate">
-                          {n.matieres?.nom ?? "—"}
+                          {matNom(n.matieres) ?? "—"}
                         </span>
                         <span className="text-xs text-gray-400 truncate hidden sm:block">
                           {n.type_eval} · {n.date}
@@ -318,8 +323,8 @@ export default function ElevesPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 ${DEVOIR_STYLES[d.type] ?? 'bg-gray-100 text-gray-600'}`}>
                           {d.type}
                         </span>
-                        {d.matieres?.nom && (
-                          <span className="text-xs text-gray-500 font-medium">{d.matieres.nom}</span>
+                        {matNom(d.matieres) && (
+                          <span className="text-xs text-gray-500 font-medium">{matNom(d.matieres)}</span>
                         )}
                         {d.date_limite && (
                           <span className="ml-auto text-xs text-red-500 font-semibold shrink-0">
