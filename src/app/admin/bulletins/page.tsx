@@ -1,7 +1,24 @@
 'use client'
 import { useEffect, useState, useMemo } from "react"
+import dynamic from "next/dynamic"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+import { calculerMoyenneClasse } from "@/lib/bulletin-helpers"
+import type { BulletinPDFProps, EcoleInfo } from "@/components/BulletinPDF"
+
+type DownloadButtonProps = BulletinPDFProps & { fileName: string }
+
+const BulletinDownloadButton = dynamic<DownloadButtonProps>(
+  () => import("@/components/BulletinDownloadButton"),
+  {
+    ssr: false,
+    loading: () => (
+      <button disabled className="text-xs text-gray-400 border border-gray-200 px-3 py-1.5 rounded-lg cursor-not-allowed">
+        PDF…
+      </button>
+    ),
+  }
+)
 
 /* ── Types ─────────────────────────────────────────────────────── */
 type User     = { id: string; nom: string; prenom: string; role: string }
@@ -49,6 +66,7 @@ export default function BulletinsPage() {
   const [classes, setClasses]     = useState<Classe[]>([])
   const [matieres, setMatieres]   = useState<Matiere[]>([])
   const [noteSur, setNoteSur]     = useState(20)
+  const [ecoleInfo, setEcoleInfo] = useState<EcoleInfo>({ nom_ecole: 'Établissement', note_sur: 20, annee_scolaire_active: '' })
 
   const [selectedPeriodeId, setSelectedPeriodeId] = useState("")
   const [selectedClasseId,  setSelectedClasseId]  = useState("")
@@ -83,8 +101,21 @@ export default function BulletinsPage() {
       .then(({ data }) => setClasses((data as unknown as Classe[]) || []))
     supabase.from('matieres').select('id,nom,coefficient').order('nom')
       .then(({ data }) => setMatieres((data as unknown as Matiere[]) || []))
-    supabase.from('parametres_ecole').select('note_sur').maybeSingle()
-      .then(({ data }) => { if (data && (data as { note_sur?: number }).note_sur) setNoteSur((data as { note_sur: number }).note_sur) })
+    supabase.from('parametres_ecole').select('nom_ecole,logo_url,adresse,note_sur,annee_scolaire_active').maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          const d = data as { nom_ecole?: string; logo_url?: string; adresse?: string; note_sur?: number; annee_scolaire_active?: string }
+          const ns = d.note_sur || 20
+          setNoteSur(ns)
+          setEcoleInfo({
+            nom_ecole: d.nom_ecole || 'Établissement',
+            logo_url: d.logo_url,
+            adresse: d.adresse,
+            note_sur: ns,
+            annee_scolaire_active: d.annee_scolaire_active || '',
+          })
+        }
+      })
   }, [])
 
   /* Chargement dynamique */
@@ -180,6 +211,13 @@ export default function BulletinsPage() {
       return { ...r, rang: firstIdx + 1 }
     })
   }, [etudiants, notes, matieres, noteSur])
+
+  /* Moyenne de classe par matière */
+  const moyennesClasse = useMemo(() => {
+    const map: Record<string, number | null> = {}
+    matieres.forEach(m => { map[m.id] = calculerMoyenneClasse(resultats, m.id) })
+    return map
+  }, [resultats, matieres])
 
   const periode     = periodes.find(p => p.id === selectedPeriodeId)
   const isCloturee  = periode?.cloturee === true
@@ -410,13 +448,26 @@ export default function BulletinsPage() {
 
                         {/* PDF */}
                         <td className="text-center px-4 py-4">
-                          <button
-                            disabled
-                            title="Disponible en Session 1C"
-                            className="text-xs text-gray-400 border border-gray-200 px-3 py-1.5 rounded-lg cursor-not-allowed select-none"
-                          >
-                            Aperçu PDF
-                          </button>
+                          {periode && (
+                            <BulletinDownloadButton
+                              ecole={{ ...ecoleInfo, note_sur: noteSur }}
+                              periode={{ libelle: periode.libelle, annee_scolaire: periode.annee_scolaire }}
+                              eleve={{ nom: r.etudiant.nom, prenom: r.etudiant.prenom, photo_url: r.etudiant.photo_url ?? undefined }}
+                              classe={{ nom: classes.find(c => c.id === selectedClasseId)?.nom ?? '' }}
+                              effectif={etudiants.length}
+                              notesParMatiere={r.notesParMatiere.map(x => ({
+                                nom_matiere:    x.matiere.nom,
+                                coefficient:    x.matiere.coefficient,
+                                moyenne_eleve:  x.moyenne,
+                                moyenne_classe: moyennesClasse[x.matiere.id] ?? null,
+                              }))}
+                              moyenneGenerale={r.moyenne}
+                              rang={r.rang}
+                              mention={r.mention}
+                              appreciationGenerale={appreciations[r.etudiant.id] || ''}
+                              fileName={`Bulletin_${r.etudiant.nom}_${r.etudiant.prenom}_${periode.libelle}.pdf`}
+                            />
+                          )}
                         </td>
                       </tr>
                     ))}
