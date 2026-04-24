@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { ouvrirWhatsApp } from '@/utils/whatsapp'
 
@@ -254,6 +255,19 @@ export default function ParentsPage() {
             </div>
           ))}
         </div>
+
+        {/* Bulletins link */}
+        <Link
+          href="/parents/bulletins"
+          className="flex items-center gap-4 bg-green-600 text-white rounded-2xl p-4 shadow-sm hover:bg-green-700 transition mb-6 group"
+        >
+          <span className="text-3xl">📄</span>
+          <div className="flex-1">
+            <p className="font-semibold">Bulletins scolaires</p>
+            <p className="text-sm text-green-100">Consulter les bulletins de mes enfants</p>
+          </div>
+          <span className="text-green-200 group-hover:text-white transition text-xl">→</span>
+        </Link>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-xl p-1 shadow-sm mb-6 overflow-x-auto">

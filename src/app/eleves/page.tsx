@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 
 type Utilisateur = { id: string; nom: string; prenom: string; email: string; role: string }
@@ -307,6 +308,19 @@ export default function ElevesPage() {
                 </div>
               )}
             </div>
+
+            {/* Bulletins */}
+            <Link
+              href="/eleves/bulletins"
+              className="bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:bg-violet-50 transition group"
+            >
+              <span className="text-3xl">📄</span>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-900">Mes bulletins</p>
+                <p className="text-sm text-gray-500">Consulter mes bulletins de notes</p>
+              </div>
+              <span className="text-gray-400 group-hover:text-violet-600 transition text-lg">→</span>
+            </Link>
 
             {/* Devoirs & examens */}
             <div className="bg-white rounded-2xl p-5 shadow-sm">

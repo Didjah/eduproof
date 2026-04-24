@@ -252,11 +252,12 @@ export default function BulletinsPage() {
       appreciation_generale: appreciations[r.etudiant.id] || null,
       donnees_json: {
         notes_par_matiere: r.notesParMatiere.map(x => ({
-          matiere_id:  x.matiere.id,
-          matiere_nom: x.matiere.nom,
-          coef:        x.matiere.coefficient,
-          notes:       x.notes.map(n => n.valeur),
-          moyenne:     x.moyenne,
+          matiere_id:     x.matiere.id,
+          matiere_nom:    x.matiere.nom,
+          coef:           x.matiere.coefficient,
+          notes:          x.notes.map(n => n.valeur),
+          moyenne:        x.moyenne,
+          moyenne_classe: moyennesClasse[x.matiere.id] ?? null,
         })),
         matieres_coef: matieres.map(m => ({ id: m.id, nom: m.nom, coef: m.coefficient })),
       },
