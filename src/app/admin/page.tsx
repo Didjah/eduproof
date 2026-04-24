@@ -9,7 +9,8 @@ type User = { id: string; nom: string; prenom: string; role: string; email: stri
 const ALL_MODULES = [
   { href: "/admin/etudiants", icon: "👨‍🎓", label: "Étudiants",  roles: ["admin", "secretaire"] },
   { href: "/admin/presences", icon: "📋",   label: "Présences", roles: ["admin", "prof", "surveillant"] },
-  { href: "/admin/notes",     icon: "📊",   label: "Notes",     roles: ["admin", "prof"] },
+  { href: "/admin/notes",     icon: "📊",   label: "Notes",      roles: ["admin", "prof"] },
+  { href: "/admin/bulletins", icon: "📋",   label: "Bulletins",  roles: ["admin", "prof"] },
   { href: "/admin/finances",  icon: "💰",   label: "Finances",  roles: ["admin", "secretaire"] },
   { href: "/admin/classes",   icon: "🏫",   label: "Classes",   roles: ["admin"] },
   { href: "/admin/matieres",  icon: "📚",   label: "Matières",        roles: ["admin", "prof"] },
