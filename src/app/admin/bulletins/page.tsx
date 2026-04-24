@@ -7,6 +7,7 @@ import { calculerMoyenneClasse } from "@/lib/bulletin-helpers"
 import type { BulletinPDFProps, EcoleInfo } from "@/components/BulletinPDF"
 
 type DownloadButtonProps = BulletinPDFProps & { fileName: string }
+type ZipProps = { classeName: string; periodeLibelle: string; bulletins: BulletinPDFProps[] }
 
 const BulletinDownloadButton = dynamic<DownloadButtonProps>(
   () => import("@/components/BulletinDownloadButton"),
@@ -15,6 +16,18 @@ const BulletinDownloadButton = dynamic<DownloadButtonProps>(
     loading: () => (
       <button disabled className="text-xs text-gray-400 border border-gray-200 px-3 py-1.5 rounded-lg cursor-not-allowed">
         PDF…
+      </button>
+    ),
+  }
+)
+
+const ZipDownloadButton = dynamic<ZipProps>(
+  () => import("@/components/ZipDownloadButton"),
+  {
+    ssr: false,
+    loading: () => (
+      <button disabled className="text-sm text-gray-400 border border-gray-200 px-6 py-2.5 rounded-xl cursor-not-allowed">
+        Chargement…
       </button>
     ),
   }
@@ -477,26 +490,54 @@ export default function BulletinsPage() {
             )}
 
             {/* Actions bas de page */}
-            {isCloturee ? (
-              <p className="text-sm text-red-500 font-medium">
-                🔒 Cette période est clôturée — bulletins en lecture seule.
-              </p>
-            ) : etudiants.length > 0 ? (
+            {etudiants.length > 0 && (
               <div className="flex flex-wrap items-center gap-4">
-                <button
-                  onClick={saveAll}
-                  disabled={saving}
-                  className="bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
-                >
-                  {saving ? 'Enregistrement…' : '💾 Enregistrer tous les bulletins'}
-                </button>
-                {toast && (
-                  <span className={`text-sm font-medium ${toast.type === 'ok' ? 'text-green-600' : 'text-red-600'}`}>
-                    {toast.msg}
-                  </span>
+                {isCloturee ? (
+                  <p className="text-sm text-red-500 font-medium">
+                    🔒 Cette période est clôturée — bulletins en lecture seule.
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      onClick={saveAll}
+                      disabled={saving}
+                      className="bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
+                    >
+                      {saving ? 'Enregistrement…' : '💾 Enregistrer tous les bulletins'}
+                    </button>
+                    {toast && (
+                      <span className={`text-sm font-medium ${toast.type === 'ok' ? 'text-green-600' : 'text-red-600'}`}>
+                        {toast.msg}
+                      </span>
+                    )}
+                  </>
+                )}
+
+                {periode && (
+                  <ZipDownloadButton
+                    classeName={classes.find(c => c.id === selectedClasseId)?.nom ?? ''}
+                    periodeLibelle={periode.libelle}
+                    bulletins={resultats.map(r => ({
+                      ecole: { ...ecoleInfo, note_sur: noteSur },
+                      periode: { libelle: periode.libelle, annee_scolaire: periode.annee_scolaire },
+                      eleve: { nom: r.etudiant.nom, prenom: r.etudiant.prenom, photo_url: r.etudiant.photo_url ?? undefined },
+                      classe: { nom: classes.find(c => c.id === selectedClasseId)?.nom ?? '' },
+                      effectif: etudiants.length,
+                      notesParMatiere: r.notesParMatiere.map(x => ({
+                        nom_matiere:    x.matiere.nom,
+                        coefficient:    x.matiere.coefficient,
+                        moyenne_eleve:  x.moyenne,
+                        moyenne_classe: moyennesClasse[x.matiere.id] ?? null,
+                      })),
+                      moyenneGenerale: r.moyenne,
+                      rang:            r.rang,
+                      mention:         r.mention,
+                      appreciationGenerale: appreciations[r.etudiant.id] || '',
+                    }))}
+                  />
                 )}
               </div>
-            ) : null}
+            )}
 
           </>
         )}
