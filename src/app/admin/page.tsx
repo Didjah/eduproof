@@ -16,6 +16,7 @@ const ALL_MODULES = [
   { href: "/admin/matieres",    icon: "📚",   label: "Matières",          roles: ["admin", "prof"] },
   { href: "/admin/cahier",      icon: "📓",   label: "Cahier de textes",  roles: ["admin", "prof"] },
   { href: "/admin/annonces",    icon: "📢",   label: "Annonces",          roles: ["admin", "secretaire"] },
+  { href: "/admin/utilisateurs", icon: "👥",  label: "Utilisateurs",      roles: ["admin"] },
   { href: "/admin/parametres",  icon: "⚙️",  label: "Paramètres",        roles: ["admin"] },
   { href: "/admin/import",      icon: "📥",  label: "Import",             roles: ["admin"] },
   { href: "/parents/bulletins", icon: "📄",   label: "Bulletins scolaires", roles: ["parent"] },
