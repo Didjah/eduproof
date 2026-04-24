@@ -55,10 +55,13 @@ function buildPDFProps(
   const npm = ((b.donnees_json?.notes_par_matiere as unknown[]) || []).map((x: unknown) => {
     const row = x as Record<string, unknown>
     return {
-      nom_matiere:    String(row.matiere_nom ?? row.nom_matiere ?? '—'),
-      coefficient:    Number(row.coef ?? row.coefficient ?? 1),
-      moyenne_eleve:  row.moyenne !== undefined ? (row.moyenne as number | null) : null,
-      moyenne_classe: row.moyenne_classe !== undefined ? (row.moyenne_classe as number | null) : null,
+      nom_matiere:      String(row.matiere_nom ?? row.nom_matiere ?? '—'),
+      coefficient:      Number(row.coef ?? row.coefficient ?? 1),
+      note_classe:      (row.note_classe      ?? null) as number | null,
+      note_composition: (row.note_composition ?? null) as number | null,
+      moyenne_eleve:    (row.moyenne          ?? null) as number | null,
+      note_coeff:       (row.note_coeff       ?? null) as number | null,
+      moyenne_classe:   (row.moyenne_classe   ?? null) as number | null,
     }
   })
   return {
@@ -106,7 +109,7 @@ export default function ParentBulletinsPage() {
 
     Promise.all([
       supabase.from('parametres_ecole')
-        .select('nom_ecole,logo_url,adresse,note_sur,annee_scolaire_active')
+        .select('nom_ecole,logo_url,adresse,telephone,note_sur,annee_scolaire_active')
         .maybeSingle(),
       supabase.from('etudiants')
         .select('id,nom,prenom,classe_id')
@@ -114,7 +117,7 @@ export default function ParentBulletinsPage() {
         .order('nom'),
     ]).then(([ecoleRes, enfantsRes]) => {
       const ed = ecoleRes.data as {
-        nom_ecole?: string; logo_url?: string; adresse?: string;
+        nom_ecole?: string; logo_url?: string; adresse?: string; telephone?: string;
         note_sur?: number; annee_scolaire_active?: string
       } | null
       if (ed) {
@@ -122,6 +125,7 @@ export default function ParentBulletinsPage() {
           nom_ecole: ed.nom_ecole || 'Établissement',
           logo_url: ed.logo_url,
           adresse: ed.adresse,
+          telephone: ed.telephone,
           note_sur: ed.note_sur || 20,
           annee_scolaire_active: ed.annee_scolaire_active || '',
         })

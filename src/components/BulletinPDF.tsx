@@ -5,6 +5,7 @@ export interface EcoleInfo {
   nom_ecole: string
   logo_url?: string
   adresse?: string
+  telephone?: string
   note_sur: number
   annee_scolaire_active: string
 }
@@ -18,7 +19,10 @@ export interface BulletinPDFProps {
   notesParMatiere: Array<{
     nom_matiere: string
     coefficient: number
+    note_classe: number | null
+    note_composition: number | null
     moyenne_eleve: number | null
+    note_coeff: number | null
     moyenne_classe: number | null
   }>
   moyenneGenerale: number | null
@@ -29,16 +33,16 @@ export interface BulletinPDFProps {
 
 /* ── Palette ───────────────────────────────────────────────────── */
 const C = {
-  indigo:      '#4f46e5',
-  indigoLight: '#eef2ff',
-  indigoBorder:'#c7d2fe',
-  gray:        '#6b7280',
-  grayLight:   '#f9fafb',
-  grayBorder:  '#e5e7eb',
-  dark:        '#111827',
-  white:       '#ffffff',
-  green:       '#16a34a',
-  red:         '#dc2626',
+  indigo:       '#4f46e5',
+  indigoLight:  '#eef2ff',
+  indigoBorder: '#c7d2fe',
+  gray:         '#6b7280',
+  grayLight:    '#f9fafb',
+  grayBorder:   '#e5e7eb',
+  dark:         '#111827',
+  white:        '#ffffff',
+  green:        '#16a34a',
+  red:          '#dc2626',
 }
 
 /* ── Styles ────────────────────────────────────────────────────── */
@@ -47,113 +51,142 @@ const S = StyleSheet.create({
     fontFamily: 'Helvetica',
     fontSize: 10,
     color: C.dark,
-    paddingTop: 36,
-    paddingBottom: 56,
-    paddingHorizontal: 40,
+    paddingTop: 28,
+    paddingBottom: 52,
+    paddingHorizontal: 32,
     backgroundColor: C.white,
   },
 
-  /* Header */
+  /* ── En-tête 3 colonnes ── */
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 10,
-    marginBottom: 10,
+    alignItems: 'flex-start',
+    paddingBottom: 8,
+    marginBottom: 8,
     borderBottomWidth: 2,
     borderBottomColor: C.indigo,
   },
-  logo: { width: 48, height: 48, marginRight: 12 },
-  logoBox: {
-    width: 48,
-    height: 48,
-    marginRight: 12,
-    backgroundColor: C.indigo,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoLetter: { fontFamily: 'Helvetica-Bold', fontSize: 20, color: C.white },
-  headerInfo: { flex: 1 },
-  schoolName: { fontFamily: 'Helvetica-Bold', fontSize: 15, color: C.indigo, marginBottom: 2 },
-  headerSub:  { fontSize: 9, color: C.gray, marginBottom: 1 },
+  headerLeft:  { flex: 1 },
+  headerCenter:{ width: 60, alignItems: 'center', paddingHorizontal: 4 },
+  headerRight: { flex: 1 },
 
-  /* Document title */
+  headerLeftBold:  { fontFamily: 'Helvetica-Bold', fontSize: 8, color: C.dark, marginBottom: 2 },
+  headerLeftSub:   { fontSize: 7.5, color: C.gray, marginBottom: 1 },
+  headerRightBold: { fontFamily: 'Helvetica-Bold', fontSize: 8, color: C.dark, marginBottom: 2, textAlign: 'right' },
+  headerRightSub:  { fontSize: 7.5, color: C.gray, marginBottom: 1, textAlign: 'right' },
+
+  logo:    { width: 52, height: 52 },
+  logoBox: {
+    width: 52, height: 52,
+    backgroundColor: C.indigo, borderRadius: 4,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  logoLetter: { fontFamily: 'Helvetica-Bold', fontSize: 22, color: C.white },
+
+  /* ── Titre ── */
   docTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 13,
+    fontSize: 11,
     color: C.dark,
     textAlign: 'center',
-    marginBottom: 12,
-    marginTop: 6,
+    marginBottom: 10,
+    marginTop: 4,
+    textTransform: 'uppercase',
   },
 
-  /* Eleve info card */
+  /* ── Élève info ── */
   eleveCard: {
     backgroundColor: C.indigoLight,
     borderRadius: 4,
-    padding: 10,
-    marginBottom: 14,
+    padding: 8,
+    marginBottom: 10,
     flexDirection: 'row',
   },
-  eleveCol: { flex: 1 },
-  eleveRow: { flexDirection: 'row', marginBottom: 4 },
-  eleveLabel: { fontFamily: 'Helvetica-Bold', fontSize: 9, color: C.gray, width: 90 },
-  eleveValue: { fontSize: 10, color: C.dark, flex: 1 },
+  eleveCol:   { flex: 1 },
+  eleveRow:   { flexDirection: 'row', marginBottom: 3 },
+  eleveLabel: { fontFamily: 'Helvetica-Bold', fontSize: 8.5, color: C.gray, width: 88 },
+  eleveValue: { fontSize: 9, color: C.dark, flex: 1 },
 
-  /* Section title */
+  /* ── Section ── */
   sectionTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 11,
+    fontSize: 10,
     color: C.indigo,
-    paddingBottom: 3,
+    paddingBottom: 2,
     marginBottom: 0,
     borderBottomWidth: 1,
     borderBottomColor: C.indigo,
   },
 
-  /* Table */
-  tableWrapper: { marginBottom: 6 },
+  /* ── Tableau ── */
+  tableWrapper: { marginBottom: 4 },
   tableHead: {
     flexDirection: 'row',
     backgroundColor: C.indigo,
-    paddingVertical: 5,
-    paddingHorizontal: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
   },
-  tableHeadText: { fontFamily: 'Helvetica-Bold', fontSize: 9, color: C.white },
+  tableHeadText: { fontFamily: 'Helvetica-Bold', fontSize: 8, color: C.white, textAlign: 'center' },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 5,
-    paddingHorizontal: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: C.grayBorder,
   },
   tableRowAlt: {
     flexDirection: 'row',
-    paddingVertical: 5,
-    paddingHorizontal: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     backgroundColor: C.grayLight,
     borderBottomWidth: 1,
     borderBottomColor: C.grayBorder,
   },
-  cellText: { fontSize: 10, color: C.dark },
-  cellGray: { fontSize: 9, color: C.gray },
-  colMatiere: { flex: 3 },
-  colCoef:    { width: 36, textAlign: 'center' },
-  colMoyEl:   { width: 72, textAlign: 'center' },
-  colMoyCl:   { width: 72, textAlign: 'center' },
 
-  /* Synthèse */
+  /* Ligne TOTAL */
+  tableTotal: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    backgroundColor: C.indigoBorder,
+    borderTopWidth: 1.5,
+    borderTopColor: C.indigo,
+  },
+  /* Ligne MOYENNE */
+  tableMoyenne: {
+    flexDirection: 'row',
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+    backgroundColor: C.indigoLight,
+    borderBottomWidth: 1,
+    borderBottomColor: C.indigoBorder,
+  },
+
+  cellText:    { fontSize: 9, color: C.dark },
+  cellGray:    { fontSize: 8.5, color: C.gray, textAlign: 'center' },
+  totalText:   { fontFamily: 'Helvetica-Bold', fontSize: 9, color: C.dark, textAlign: 'center' },
+  moyenneText: { fontFamily: 'Helvetica-Bold', fontSize: 10, color: C.indigo },
+
+  /* Colonnes tableau */
+  colMatiere:   { flex: 3 },
+  colNotClas:   { width: 46, textAlign: 'center' },
+  colNotComp:   { width: 46, textAlign: 'center' },
+  colMoyen:     { width: 46, textAlign: 'center' },
+  colCoef:      { width: 30, textAlign: 'center' },
+  colNoteCoeff: { width: 50, textAlign: 'center' },
+
+  /* ── Synthèse (Rang / Mention) ── */
   syntheseWrapper: {
     flexDirection: 'row',
-    marginTop: 10,
-    marginBottom: 14,
+    marginTop: 8,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: C.indigoBorder,
     borderRadius: 4,
   },
   syntheseBlock: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 8,
     alignItems: 'center',
     borderRightWidth: 1,
@@ -161,21 +194,21 @@ const S = StyleSheet.create({
   },
   syntheseBlockLast: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 8,
     alignItems: 'center',
   },
   syntheseLabel: { fontSize: 8, color: C.gray, marginBottom: 3 },
-  syntheseBig:   { fontFamily: 'Helvetica-Bold', fontSize: 17, color: C.indigo },
-  syntheseMed:   { fontFamily: 'Helvetica-Bold', fontSize: 12, color: C.indigo },
+  syntheseBig:   { fontFamily: 'Helvetica-Bold', fontSize: 16, color: C.indigo },
+  syntheseMed:   { fontFamily: 'Helvetica-Bold', fontSize: 11, color: C.indigo },
 
-  /* Appréciation */
+  /* ── Appréciation ── */
   appTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 11,
+    fontSize: 10,
     color: C.indigo,
-    paddingBottom: 3,
-    marginBottom: 6,
+    paddingBottom: 2,
+    marginBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: C.indigo,
   },
@@ -183,46 +216,45 @@ const S = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.grayBorder,
     borderRadius: 4,
-    padding: 10,
-    minHeight: 45,
-    marginBottom: 20,
+    padding: 8,
+    minHeight: 40,
+    marginBottom: 16,
   },
-  appText:  { fontSize: 10, color: C.dark },
-  appEmpty: { fontSize: 10, color: C.gray },
+  appText:  { fontSize: 9, color: C.dark },
+  appEmpty: { fontSize: 9, color: C.gray },
 
-  /* Pas de notes */
   noNotes: {
-    fontSize: 10,
+    fontSize: 9,
     color: C.gray,
     textAlign: 'center',
-    padding: 16,
+    padding: 14,
     backgroundColor: C.grayLight,
     borderRadius: 4,
-    marginBottom: 14,
+    marginBottom: 10,
   },
 
-  /* Footer */
+  /* ── Pied de page ── */
   footer: {
     position: 'absolute',
-    bottom: 28,
-    left: 40,
-    right: 40,
+    bottom: 24,
+    left: 32,
+    right: 32,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     borderTopWidth: 1,
     borderTopColor: C.grayBorder,
-    paddingTop: 8,
+    paddingTop: 6,
   },
-  footerText: { fontSize: 8, color: C.gray },
+  footerText: { fontSize: 7.5, color: C.gray },
   sigBox:     { alignItems: 'center' },
-  sigLine:    { width: 90, borderBottomWidth: 1, borderBottomColor: C.dark, marginBottom: 3 },
-  sigLabel:   { fontSize: 8, color: C.gray },
+  sigLine:    { width: 80, borderBottomWidth: 1, borderBottomColor: C.dark, marginBottom: 2 },
+  sigLabel:   { fontSize: 7.5, color: C.gray },
 })
 
 /* ── Helpers ───────────────────────────────────────────────────── */
-function fmtNote(v: number | null, noteSur: number): string {
-  return v !== null ? `${v.toFixed(2)}/${noteSur}` : '—'
+function fmt(v: number | null): string {
+  return v !== null ? v.toFixed(2) : '—'
 }
 
 /* ── Component ─────────────────────────────────────────────────── */
@@ -230,38 +262,54 @@ export default function BulletinPDF({
   ecole, periode, eleve, classe, effectif,
   notesParMatiere, moyenneGenerale, rang, mention, appreciationGenerale,
 }: BulletinPDFProps) {
-  const today = new Date().toLocaleDateString('fr-FR')
-  const sur20 = (v: number) => ecole.note_sur === 100 ? v / 5 : v
+  const today  = new Date().toLocaleDateString('fr-FR')
+  const sur20  = (v: number) => ecole.note_sur === 100 ? v / 5 : v
   const passColor = moyenneGenerale !== null && sur20(moyenneGenerale) >= 10 ? C.green : C.red
+
+  const totalCoeff     = notesParMatiere.reduce((s, r) => s + r.coefficient, 0)
+  const totalNoteCoeff = notesParMatiere.reduce((s, r) => s + (r.note_coeff ?? 0), 0)
 
   return (
     <Document>
       <Page size="A4" style={S.page}>
 
-        {/* ── En-tête ── */}
+        {/* ── En-tête 3 colonnes ── */}
         <View style={S.header}>
-          {ecole.logo_url
-            ? <Image style={S.logo} src={ecole.logo_url} />
-            : (
-              <View style={S.logoBox}>
-                <Text style={S.logoLetter}>
-                  {ecole.nom_ecole.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )
-          }
-          <View style={S.headerInfo}>
-            <Text style={S.schoolName}>{ecole.nom_ecole}</Text>
-            {ecole.adresse && <Text style={S.headerSub}>{ecole.adresse}</Text>}
-            <Text style={S.headerSub}>
-              Année scolaire : {ecole.annee_scolaire_active || periode.annee_scolaire}
-            </Text>
+
+          {/* Bloc gauche — identification officielle */}
+          <View style={S.headerLeft}>
+            <Text style={S.headerLeftBold}>Ministère de la Santé</Text>
+            <Text style={S.headerLeftSub}>Direction Nationale de la Santé Publique</Text>
+            <Text style={S.headerLeftBold}>{ecole.nom_ecole}</Text>
+            {ecole.adresse   && <Text style={S.headerLeftSub}>{ecole.adresse}</Text>}
+            {ecole.telephone && <Text style={S.headerLeftSub}>Tel.: {ecole.telephone}</Text>}
           </View>
+
+          {/* Bloc centre — logo ou initiale */}
+          <View style={S.headerCenter}>
+            {ecole.logo_url
+              ? <Image style={S.logo} src={ecole.logo_url} />
+              : (
+                <View style={S.logoBox}>
+                  <Text style={S.logoLetter}>{ecole.nom_ecole.charAt(0).toUpperCase()}</Text>
+                </View>
+              )
+            }
+          </View>
+
+          {/* Bloc droit — devise nationale */}
+          <View style={S.headerRight}>
+            <Text style={S.headerRightBold}>REPUBLIQUE DU MALI</Text>
+            <Text style={S.headerRightSub}>Un Peuple - Un But - Une Foi</Text>
+            <Text style={S.headerRightSub}> </Text>
+            <Text style={S.headerRightSub}>Travail - Discipline - Réussite</Text>
+          </View>
+
         </View>
 
         {/* ── Titre ── */}
         <Text style={S.docTitle}>
-          BULLETIN DE NOTES — {periode.libelle.toUpperCase()}
+          Bulletin des Notes de composition de la {periode.libelle} {periode.annee_scolaire}
         </Text>
 
         {/* ── Infos élève ── */}
@@ -306,47 +354,69 @@ export default function BulletinPDF({
           </View>
         </View>
 
-        {/* ── Tableau matières ── */}
+        {/* ── Tableau des matières ── */}
         <Text style={S.sectionTitle}>RÉSULTATS PAR MATIÈRE</Text>
         <View style={S.tableWrapper}>
-          {/* En-tête */}
+
+          {/* En-tête colonnes */}
           <View style={S.tableHead}>
-            <Text style={[S.tableHeadText, S.colMatiere]}>Matière</Text>
-            <Text style={[S.tableHeadText, S.colCoef]}>Coef</Text>
-            <Text style={[S.tableHeadText, S.colMoyEl]}>Moy. Élève</Text>
-            <Text style={[S.tableHeadText, S.colMoyCl]}>Moy. Classe</Text>
+            <Text style={[S.tableHeadText, S.colMatiere]}>Matières</Text>
+            <Text style={[S.tableHeadText, S.colNotClas]}>Not.Clas</Text>
+            <Text style={[S.tableHeadText, S.colNotComp]}>Not.Comp</Text>
+            <Text style={[S.tableHeadText, S.colMoyen]}>Moyen</Text>
+            <Text style={[S.tableHeadText, S.colCoef]}>Coeff</Text>
+            <Text style={[S.tableHeadText, S.colNoteCoeff]}>Not.Coeff</Text>
           </View>
 
           {notesParMatiere.length === 0 ? (
             <Text style={S.noNotes}>Aucune note enregistrée pour cette période.</Text>
           ) : (
-            notesParMatiere.map((row, i) => (
-              <View key={i} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
-                <Text style={[S.cellText, S.colMatiere]}>{row.nom_matiere}</Text>
-                <Text style={[S.cellGray, S.colCoef]}>{row.coefficient}</Text>
-                <Text style={[S.cellText, S.colMoyEl, {
-                  fontFamily: 'Helvetica-Bold',
-                  color: row.moyenne_eleve !== null && sur20(row.moyenne_eleve) >= 10 ? C.green : C.red,
-                }]}>
-                  {fmtNote(row.moyenne_eleve, ecole.note_sur)}
-                </Text>
-                <Text style={[S.cellGray, S.colMoyCl]}>
-                  {fmtNote(row.moyenne_classe, ecole.note_sur)}
+            <>
+              {notesParMatiere.map((row, i) => {
+                const pass = row.moyenne_eleve !== null && sur20(row.moyenne_eleve) >= 10
+                return (
+                  <View key={i} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+                    <Text style={[S.cellText, S.colMatiere]}>{row.nom_matiere}</Text>
+                    <Text style={[S.cellGray, S.colNotClas]}>{fmt(row.note_classe)}</Text>
+                    <Text style={[S.cellGray, S.colNotComp]}>{fmt(row.note_composition)}</Text>
+                    <Text style={[S.cellText, S.colMoyen, {
+                      fontFamily: 'Helvetica-Bold',
+                      color: row.moyenne_eleve !== null ? (pass ? C.green : C.red) : C.gray,
+                      textAlign: 'center',
+                    }]}>
+                      {fmt(row.moyenne_eleve)}
+                    </Text>
+                    <Text style={[S.cellGray, S.colCoef]}>{row.coefficient}</Text>
+                    <Text style={[S.cellText, S.colNoteCoeff, { textAlign: 'center' }]}>
+                      {fmt(row.note_coeff)}
+                    </Text>
+                  </View>
+                )
+              })}
+
+              {/* Ligne TOTAL */}
+              <View style={S.tableTotal}>
+                <Text style={[S.totalText, S.colMatiere]}>TOTAL</Text>
+                <Text style={[S.totalText, S.colNotClas]}></Text>
+                <Text style={[S.totalText, S.colNotComp]}></Text>
+                <Text style={[S.totalText, S.colMoyen]}></Text>
+                <Text style={[S.totalText, S.colCoef]}>{totalCoeff}</Text>
+                <Text style={[S.totalText, S.colNoteCoeff]}>{totalNoteCoeff.toFixed(2)}</Text>
+              </View>
+
+              {/* Ligne MOYENNE */}
+              <View style={S.tableMoyenne}>
+                <Text style={[S.moyenneText, { color: passColor }]}>
+                  Moyenne /{ecole.note_sur} : {moyenneGenerale !== null ? sur20(moyenneGenerale).toFixed(2) : '—'}
                 </Text>
               </View>
-            ))
+            </>
           )}
         </View>
 
-        {/* ── Synthèse ── */}
-        {moyenneGenerale !== null && (
+        {/* ── Synthèse Rang / Mention ── */}
+        {(rang !== null || mention) && (
           <View style={S.syntheseWrapper}>
-            <View style={S.syntheseBlock}>
-              <Text style={S.syntheseLabel}>MOYENNE GÉNÉRALE</Text>
-              <Text style={[S.syntheseBig, { color: passColor }]}>
-                {fmtNote(moyenneGenerale, ecole.note_sur)}
-              </Text>
-            </View>
             <View style={S.syntheseBlock}>
               <Text style={S.syntheseLabel}>RANG</Text>
               <Text style={S.syntheseBig}>

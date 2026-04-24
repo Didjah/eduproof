@@ -38,7 +38,7 @@ type User     = { id: string; nom: string; prenom: string; role: string }
 type Periode  = { id: string; annee_scolaire: string; numero: number; libelle: string; date_debut: string; date_fin: string; cloturee: boolean }
 type Classe   = { id: string; nom: string }
 type Etudiant = { id: string; nom: string; prenom: string; photo_url?: string | null }
-type Note     = { id: string; etudiant_id: string; matiere_id: string; valeur: number; date: string }
+type Note     = { id: string; etudiant_id: string; matiere_id: string; valeur: number; type_eval: string; date: string }
 type Matiere  = { id: string; nom: string; coefficient: number }
 type BulletinRow = { id: string; eleve_id: string; appreciation_generale: string | null }
 
@@ -47,7 +47,14 @@ type ResultatEleve = {
   moyenne: number | null
   mention: string | null
   rang: number | null
-  notesParMatiere: Array<{ matiere: Matiere; notes: Note[]; moyenne: number | null }>
+  notesParMatiere: Array<{
+    matiere: Matiere
+    notes: Note[]
+    moyenne: number | null
+    note_classe: number | null
+    note_composition: number | null
+    note_coeff: number | null
+  }>
 }
 
 /* ── Helpers ───────────────────────────────────────────────────── */
@@ -114,16 +121,17 @@ export default function BulletinsPage() {
       .then(({ data }) => setClasses((data as unknown as Classe[]) || []))
     supabase.from('matieres').select('id,nom,coefficient').order('nom')
       .then(({ data }) => setMatieres((data as unknown as Matiere[]) || []))
-    supabase.from('parametres_ecole').select('nom_ecole,logo_url,adresse,note_sur,annee_scolaire_active').maybeSingle()
+    supabase.from('parametres_ecole').select('nom_ecole,logo_url,adresse,telephone,note_sur,annee_scolaire_active').maybeSingle()
       .then(({ data }) => {
         if (data) {
-          const d = data as { nom_ecole?: string; logo_url?: string; adresse?: string; note_sur?: number; annee_scolaire_active?: string }
+          const d = data as { nom_ecole?: string; logo_url?: string; adresse?: string; telephone?: string; note_sur?: number; annee_scolaire_active?: string }
           const ns = d.note_sur || 20
           setNoteSur(ns)
           setEcoleInfo({
             nom_ecole: d.nom_ecole || 'Établissement',
             logo_url: d.logo_url,
             adresse: d.adresse,
+            telephone: d.telephone,
             note_sur: ns,
             annee_scolaire_active: d.annee_scolaire_active || '',
           })
@@ -149,7 +157,7 @@ export default function BulletinsPage() {
         .eq('classe_id', selectedClasseId)
         .order('nom'),
       supabase.from('notes')
-        .select('id,etudiant_id,matiere_id,valeur,date')
+        .select('id,etudiant_id,matiere_id,valeur,type_eval,date')
         .gte('date', periode.date_debut)
         .lte('date', periode.date_fin),
       supabase.from('bulletins')
@@ -184,11 +192,31 @@ export default function BulletinsPage() {
 
       const notesParMatiere = matieres
         .map(m => {
-          const notesMat = notesEt.filter(n => n.matiere_id === m.id)
-          const moy = notesMat.length > 0
-            ? notesMat.reduce((s, n) => s + n.valeur, 0) / notesMat.length
-            : null
-          return { matiere: m, notes: notesMat, moyenne: moy }
+          const notesMat      = notesEt.filter(n => n.matiere_id === m.id)
+          const noteClasse     = notesMat.find(n => n.type_eval === 'classe')
+          const noteCompo      = notesMat.find(n => n.type_eval === 'composition')
+
+          let moyenneEleve: number | null = null
+          if (noteClasse && noteCompo) {
+            moyenneEleve = (noteClasse.valeur + noteCompo.valeur) / 2
+          } else if (noteClasse) {
+            moyenneEleve = noteClasse.valeur
+          } else if (noteCompo) {
+            moyenneEleve = noteCompo.valeur
+          } else if (notesMat.length > 0) {
+            moyenneEleve = notesMat.reduce((s, n) => s + n.valeur, 0) / notesMat.length
+          }
+
+          const note_coeff = moyenneEleve !== null ? moyenneEleve * m.coefficient : null
+
+          return {
+            matiere:          m,
+            notes:            notesMat,
+            moyenne:          moyenneEleve,
+            note_classe:      noteClasse?.valeur ?? null,
+            note_composition: noteCompo?.valeur  ?? null,
+            note_coeff,
+          }
         })
         .filter(x => x.notes.length > 0)
 
@@ -197,7 +225,7 @@ export default function BulletinsPage() {
       }
 
       const sumCoef = notesParMatiere.reduce((s, x) => s + x.matiere.coefficient, 0)
-      const sumPond = notesParMatiere.reduce((s, x) => s + (x.moyenne! * x.matiere.coefficient), 0)
+      const sumPond = notesParMatiere.reduce((s, x) => s + (x.note_coeff ?? 0), 0)
       const moy = sumCoef > 0 ? sumPond / sumCoef : null
 
       return {
@@ -252,12 +280,15 @@ export default function BulletinsPage() {
       appreciation_generale: appreciations[r.etudiant.id] || null,
       donnees_json: {
         notes_par_matiere: r.notesParMatiere.map(x => ({
-          matiere_id:     x.matiere.id,
-          matiere_nom:    x.matiere.nom,
-          coef:           x.matiere.coefficient,
-          notes:          x.notes.map(n => n.valeur),
-          moyenne:        x.moyenne,
-          moyenne_classe: moyennesClasse[x.matiere.id] ?? null,
+          matiere_id:       x.matiere.id,
+          matiere_nom:      x.matiere.nom,
+          coef:             x.matiere.coefficient,
+          notes:            x.notes.map(n => n.valeur),
+          note_classe:      x.note_classe,
+          note_composition: x.note_composition,
+          moyenne:          x.moyenne,
+          note_coeff:       x.note_coeff,
+          moyenne_classe:   moyennesClasse[x.matiere.id] ?? null,
         })),
         matieres_coef: matieres.map(m => ({ id: m.id, nom: m.nom, coef: m.coefficient })),
       },
@@ -470,10 +501,13 @@ export default function BulletinsPage() {
                               classe={{ nom: classes.find(c => c.id === selectedClasseId)?.nom ?? '' }}
                               effectif={etudiants.length}
                               notesParMatiere={r.notesParMatiere.map(x => ({
-                                nom_matiere:    x.matiere.nom,
-                                coefficient:    x.matiere.coefficient,
-                                moyenne_eleve:  x.moyenne,
-                                moyenne_classe: moyennesClasse[x.matiere.id] ?? null,
+                                nom_matiere:      x.matiere.nom,
+                                coefficient:      x.matiere.coefficient,
+                                note_classe:      x.note_classe,
+                                note_composition: x.note_composition,
+                                moyenne_eleve:    x.moyenne,
+                                note_coeff:       x.note_coeff,
+                                moyenne_classe:   moyennesClasse[x.matiere.id] ?? null,
                               }))}
                               moyenneGenerale={r.moyenne}
                               rang={r.rang}
@@ -525,10 +559,13 @@ export default function BulletinsPage() {
                       classe: { nom: classes.find(c => c.id === selectedClasseId)?.nom ?? '' },
                       effectif: etudiants.length,
                       notesParMatiere: r.notesParMatiere.map(x => ({
-                        nom_matiere:    x.matiere.nom,
-                        coefficient:    x.matiere.coefficient,
-                        moyenne_eleve:  x.moyenne,
-                        moyenne_classe: moyennesClasse[x.matiere.id] ?? null,
+                        nom_matiere:      x.matiere.nom,
+                        coefficient:      x.matiere.coefficient,
+                        note_classe:      x.note_classe,
+                        note_composition: x.note_composition,
+                        moyenne_eleve:    x.moyenne,
+                        note_coeff:       x.note_coeff,
+                        moyenne_classe:   moyennesClasse[x.matiere.id] ?? null,
                       })),
                       moyenneGenerale: r.moyenne,
                       rang:            r.rang,
