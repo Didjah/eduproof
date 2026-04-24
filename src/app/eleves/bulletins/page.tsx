@@ -21,18 +21,19 @@ const BulletinDownloadButton = dynamic<DownloadButtonProps>(
 
 /* ── Types ─────────────────────────────────────────────────────── */
 type Utilisateur = { id: string; nom: string; prenom: string; email: string; role: string }
-
+type Periode     = { id: string; libelle: string; annee_scolaire: string; numero: number }
 type BulletinRow = {
   id: string
+  periode_id: string
   moyenne_generale: number | null
   rang: number | null
   effectif_classe: number
   mention: string | null
   appreciation_generale: string | null
   donnees_json: Record<string, unknown> | null
-  periodes: { id: string; libelle: string; annee_scolaire: string; cloturee: boolean } | null
   classes: { nom: string } | null
 }
+type Card = { periode: Periode; bulletin: BulletinRow | null; classeNom: string }
 
 const MENTION_STYLES: Record<string, string> = {
   'Excellent':   'bg-green-100 text-green-700',
@@ -43,8 +44,13 @@ const MENTION_STYLES: Record<string, string> = {
   'Insuffisant': 'bg-red-100 text-red-700',
 }
 
-function buildPDFProps(b: BulletinRow, ecoleInfo: EcoleInfo): BulletinPDFProps | null {
-  if (!b.periodes || !b.classes) return null
+function buildPDFProps(
+  b: BulletinRow,
+  eleve: { nom: string; prenom: string },
+  periode: Periode,
+  ecoleInfo: EcoleInfo
+): BulletinPDFProps | null {
+  if (!b.classes) return null
   const npm = ((b.donnees_json?.notes_par_matiere as unknown[]) || []).map((x: unknown) => {
     const row = x as Record<string, unknown>
     return {
@@ -56,8 +62,8 @@ function buildPDFProps(b: BulletinRow, ecoleInfo: EcoleInfo): BulletinPDFProps |
   })
   return {
     ecole: ecoleInfo,
-    periode: { libelle: b.periodes.libelle, annee_scolaire: b.periodes.annee_scolaire },
-    eleve: { nom: '', prenom: '' },
+    periode: { libelle: periode.libelle, annee_scolaire: periode.annee_scolaire },
+    eleve,
     classe: { nom: b.classes.nom },
     effectif: b.effectif_classe,
     notesParMatiere: npm,
@@ -73,26 +79,25 @@ export default function EleveBulletinsPage() {
   const [user, setUser]           = useState<Utilisateur | null>(null)
   const [accesRefuse, setAccesRefuse] = useState(false)
 
-  const [bulletins, setBulletins] = useState<BulletinRow[]>([])
-  const [ecoleInfo, setEcoleInfo] = useState<EcoleInfo>({
+  const [eleveNom, setEleveNom]       = useState('')
+  const [elevePrenom, setElevePrenom] = useState('')
+  const [cards, setCards]             = useState<Card[]>([])
+  const [ecoleInfo, setEcoleInfo]     = useState<EcoleInfo>({
     nom_ecole: 'Établissement', note_sur: 20, annee_scolaire_active: '',
   })
-  const [loading, setLoading]     = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  /* Auth depuis localStorage */
+  /* Auth */
   useEffect(() => {
     try {
       const raw = localStorage.getItem('eduproof_eleve')
       const u   = raw ? JSON.parse(raw) : null
-      if (!u || u.role !== 'etudiant') {
-        setAccesRefuse(true)
-      } else {
-        setUser(u)
-      }
+      if (!u || u.role !== 'etudiant') { setAccesRefuse(true) }
+      else { setUser(u) }
     } catch { setAccesRefuse(true) }
   }, [])
 
-  /* Charger école + bulletins */
+  /* Chargement données */
   useEffect(() => {
     if (!user) return
     setLoading(true)
@@ -102,11 +107,14 @@ export default function EleveBulletinsPage() {
         .select('nom_ecole,logo_url,adresse,note_sur,annee_scolaire_active')
         .maybeSingle(),
       supabase.from('etudiants')
-        .select('id,nom,prenom')
+        .select('id,nom,prenom,classe_id')
         .eq('email', user.email)
         .maybeSingle(),
     ]).then(async ([ecoleRes, etRes]) => {
-      const ed = ecoleRes.data as { nom_ecole?: string; logo_url?: string; adresse?: string; note_sur?: number; annee_scolaire_active?: string } | null
+      const ed = ecoleRes.data as {
+        nom_ecole?: string; logo_url?: string; adresse?: string;
+        note_sur?: number; annee_scolaire_active?: string
+      } | null
       if (ed) {
         setEcoleInfo({
           nom_ecole: ed.nom_ecole || 'Établissement',
@@ -117,28 +125,40 @@ export default function EleveBulletinsPage() {
         })
       }
 
-      const etudiant = etRes.data as { id: string; nom: string; prenom: string } | null
-      if (!etudiant) { setLoading(false); return }
+      const et = etRes.data as {
+        id: string; nom: string; prenom: string; classe_id: string | null
+      } | null
+      if (!et) { setLoading(false); return }
 
-      const { data } = await supabase
-        .from('bulletins')
-        .select('id,moyenne_generale,rang,effectif_classe,mention,appreciation_generale,donnees_json,periodes(id,libelle,annee_scolaire,cloturee),classes(nom)')
-        .eq('eleve_id', etudiant.id)
-        .order('created_at', { ascending: false })
+      setEleveNom(et.nom)
+      setElevePrenom(et.prenom)
 
-      const rows = ((data || []) as unknown as BulletinRow[])
-        .filter(b => b.periodes?.cloturee === true)
+      /* Récupérer périodes clôturées, bulletins, et nom de classe en parallèle */
+      const [periodesRes, bulletinsRes, classeRes] = await Promise.all([
+        supabase.from('periodes')
+          .select('id,libelle,annee_scolaire,numero')
+          .eq('cloturee', true)
+          .order('numero'),
+        supabase.from('bulletins')
+          .select('id,periode_id,moyenne_generale,rang,effectif_classe,mention,appreciation_generale,donnees_json,classes(nom)')
+          .eq('eleve_id', et.id),
+        et.classe_id
+          ? supabase.from('classes').select('nom').eq('id', et.classe_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ])
 
-      // Injecter nom/prénom de l'élève dans les bulletins pour le PDF
-      const enriched = rows.map(b => ({
-        ...b,
-        _eleveNom: etudiant.nom,
-        _elevePrenom: etudiant.prenom,
-      }))
+      const closedPeriodes = (periodesRes.data || []) as Periode[]
+      const bulletinMap = new Map(
+        ((bulletinsRes.data || []) as unknown as BulletinRow[]).map(b => [b.periode_id, b])
+      )
+      const classeNom = (classeRes.data as { nom?: string } | null)?.nom ?? '—'
 
-      setBulletins(enriched as unknown as BulletinRow[])
-      setLoading(false)
-    })
+      setCards(closedPeriodes.map(p => ({
+        periode: p,
+        bulletin: bulletinMap.get(p.id) ?? null,
+        classeNom,
+      })))
+    }).catch(() => { /* ignore */ }).finally(() => setLoading(false))
   }, [user])
 
   /* ── Accès refusé ─────────────────────────────────────────────── */
@@ -154,6 +174,8 @@ export default function EleveBulletinsPage() {
       </div>
     </div>
   )
+
+  const eleve = { nom: eleveNom, prenom: elevePrenom }
 
   return (
     <main className="min-h-screen bg-violet-50">
@@ -173,122 +195,128 @@ export default function EleveBulletinsPage() {
           </p>
         )}
 
-        {loading && (
-          <div className="text-center py-20 text-gray-400">Chargement…</div>
-        )}
+        {loading && <div className="text-center py-20 text-gray-400">Chargement…</div>}
 
-        {!loading && bulletins.length === 0 && (
+        {!loading && cards.length === 0 && (
           <div className="text-center py-20 text-gray-400">
             <p className="text-4xl mb-4">📄</p>
-            <p>Aucun bulletin disponible pour le moment.</p>
-            <p className="text-sm mt-2">Les bulletins apparaissent ici une fois les périodes clôturées.</p>
+            <p>Aucune période clôturée pour le moment.</p>
+            <p className="text-sm mt-2">Les bulletins apparaissent ici une fois les périodes clôturées par l&apos;administration.</p>
           </div>
         )}
 
-        {!loading && bulletins.length > 0 && (
+        {!loading && cards.length > 0 && (
           <div className="flex flex-col gap-5">
-            {(bulletins as unknown as (BulletinRow & { _eleveNom?: string; _elevePrenom?: string })[]).map(b => {
-              const pdfProps = buildPDFProps(b, ecoleInfo)
-              const elevePDF = pdfProps ? {
-                ...pdfProps,
-                eleve: {
-                  nom:    b._eleveNom    || user?.nom    || '',
-                  prenom: b._elevePrenom || user?.prenom || '',
-                },
-              } : null
+            {cards.map(({ periode, bulletin, classeNom }) => {
+              const hasDonnees = !!(
+                bulletin?.donnees_json?.notes_par_matiere &&
+                ((bulletin.donnees_json.notes_par_matiere as unknown[]).length > 0)
+              )
+              const pdfProps = bulletin && hasDonnees
+                ? buildPDFProps(bulletin, eleve, periode, ecoleInfo)
+                : null
 
               return (
-                <div key={b.id} className="bg-white rounded-2xl shadow-sm p-5">
+                <div key={periode.id} className="bg-white rounded-2xl shadow-sm p-5">
+
                   {/* En-tête carte */}
                   <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900">
-                        {b.periodes?.libelle ?? '—'}
-                      </h2>
-                      <p className="text-sm text-gray-500">
-                        {b.classes?.nom ?? '—'} · {b.periodes?.annee_scolaire ?? ''}
-                      </p>
+                      <h2 className="text-lg font-bold text-gray-900">{periode.libelle}</h2>
+                      <p className="text-sm text-gray-500">{classeNom} · {periode.annee_scolaire}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      {b.mention && (
-                        <span className={`text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap ${MENTION_STYLES[b.mention] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {b.mention}
+                      {bulletin?.mention && (
+                        <span className={`text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap ${MENTION_STYLES[bulletin.mention] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {bulletin.mention}
                         </span>
                       )}
-                      {elevePDF && (
+                      {pdfProps && (
                         <BulletinDownloadButton
-                          {...elevePDF}
-                          fileName={`Bulletin_${b.periodes?.libelle ?? 'bulletin'}.pdf`.replace(/[^a-zA-Z0-9._-]/g, '_')}
+                          {...pdfProps}
+                          fileName={`Bulletin_${periode.libelle}.pdf`.replace(/[^a-zA-Z0-9._-]/g, '_')}
                         />
                       )}
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="bg-violet-50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Moyenne</p>
-                      <p className={`text-xl font-bold ${b.moyenne_generale !== null && b.moyenne_generale >= ecoleInfo.note_sur / 2 ? 'text-green-600' : 'text-red-600'}`}>
-                        {b.moyenne_generale !== null ? `${b.moyenne_generale.toFixed(2)}/${ecoleInfo.note_sur}` : '—'}
-                      </p>
-                    </div>
-                    <div className="bg-violet-50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Rang</p>
-                      <p className="text-xl font-bold text-violet-700">
-                        {b.rang !== null ? `${b.rang}/${b.effectif_classe}` : '—'}
-                      </p>
-                    </div>
-                    <div className="bg-violet-50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-gray-500 mb-1">Effectif</p>
-                      <p className="text-xl font-bold text-gray-700">{b.effectif_classe}</p>
-                    </div>
-                  </div>
-
-                  {/* Matières */}
-                  {((b.donnees_json?.notes_par_matiere as unknown[]) || []).length > 0 && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 text-gray-600 font-semibold">Matière</th>
-                            <th className="text-center py-2 text-gray-600 font-semibold w-16">Coef</th>
-                            <th className="text-center py-2 text-gray-600 font-semibold w-28">Moy. Élève</th>
-                            <th className="text-center py-2 text-gray-600 font-semibold w-28">Moy. Classe</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {((b.donnees_json?.notes_par_matiere as unknown[]) || []).map((x: unknown, i: number) => {
-                            const row = x as Record<string, unknown>
-                            const moy = row.moyenne as number | null
-                            const noteSur = ecoleInfo.note_sur
-                            const sur20 = (v: number) => noteSur === 100 ? v / 5 : v
-                            const pass = moy !== null && sur20(moy) >= 10
-                            return (
-                              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="py-2 pr-3">{String(row.matiere_nom ?? row.nom_matiere ?? '—')}</td>
-                                <td className="text-center py-2 text-gray-500">{String(row.coef ?? row.coefficient ?? 1)}</td>
-                                <td className={`text-center py-2 font-semibold ${pass ? 'text-green-600' : 'text-red-600'}`}>
-                                  {moy !== null ? `${moy.toFixed(2)}/${noteSur}` : '—'}
-                                </td>
-                                <td className="text-center py-2 text-gray-500">
-                                  {row.moyenne_classe !== null && row.moyenne_classe !== undefined
-                                    ? `${(row.moyenne_classe as number).toFixed(2)}/${noteSur}`
-                                    : '—'}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                  {/* Pas de bulletin sauvegardé OU bulletin sans données */}
+                  {(!bulletin || !hasDonnees) && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
+                      Bulletin en attente de génération par l&apos;établissement.
                     </div>
                   )}
 
-                  {/* Appréciation */}
-                  {b.appreciation_generale && (
-                    <div className="mt-4 bg-violet-50 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-violet-700 mb-1">Appréciation du conseil de classe</p>
-                      <p className="text-sm text-gray-700 italic">"{b.appreciation_generale}"</p>
-                    </div>
+                  {/* Bulletin complet */}
+                  {bulletin && hasDonnees && (
+                    <>
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className="bg-violet-50 rounded-xl p-3 text-center">
+                          <p className="text-xs text-gray-500 mb-1">Moyenne</p>
+                          <p className={`text-xl font-bold ${
+                            bulletin.moyenne_generale !== null && bulletin.moyenne_generale >= ecoleInfo.note_sur / 2
+                              ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {bulletin.moyenne_generale !== null
+                              ? `${bulletin.moyenne_generale.toFixed(2)}/${ecoleInfo.note_sur}`
+                              : '—'}
+                          </p>
+                        </div>
+                        <div className="bg-violet-50 rounded-xl p-3 text-center">
+                          <p className="text-xs text-gray-500 mb-1">Rang</p>
+                          <p className="text-xl font-bold text-violet-700">
+                            {bulletin.rang !== null ? `${bulletin.rang}/${bulletin.effectif_classe}` : '—'}
+                          </p>
+                        </div>
+                        <div className="bg-violet-50 rounded-xl p-3 text-center">
+                          <p className="text-xs text-gray-500 mb-1">Effectif</p>
+                          <p className="text-xl font-bold text-gray-700">{bulletin.effectif_classe}</p>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-2 text-gray-600 font-semibold">Matière</th>
+                              <th className="text-center py-2 text-gray-600 font-semibold w-16">Coef</th>
+                              <th className="text-center py-2 text-gray-600 font-semibold w-28">Moy. Élève</th>
+                              <th className="text-center py-2 text-gray-600 font-semibold w-28">Moy. Classe</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {((bulletin.donnees_json?.notes_par_matiere as unknown[]) || []).map((x: unknown, i: number) => {
+                              const row  = x as Record<string, unknown>
+                              const moy  = row.moyenne as number | null
+                              const ns   = ecoleInfo.note_sur
+                              const s20  = (v: number) => ns === 100 ? v / 5 : v
+                              const pass = moy !== null && s20(moy) >= 10
+                              return (
+                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="py-2 pr-3">{String(row.matiere_nom ?? row.nom_matiere ?? '—')}</td>
+                                  <td className="text-center py-2 text-gray-500">{String(row.coef ?? row.coefficient ?? 1)}</td>
+                                  <td className={`text-center py-2 font-semibold ${pass ? 'text-green-600' : 'text-red-600'}`}>
+                                    {moy !== null ? `${moy.toFixed(2)}/${ns}` : '—'}
+                                  </td>
+                                  <td className="text-center py-2 text-gray-500">
+                                    {row.moyenne_classe != null
+                                      ? `${(row.moyenne_classe as number).toFixed(2)}/${ns}`
+                                      : '—'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {bulletin.appreciation_generale && (
+                        <div className="mt-4 bg-violet-50 rounded-xl p-4">
+                          <p className="text-xs font-semibold text-violet-700 mb-1">Appréciation du conseil de classe</p>
+                          <p className="text-sm text-gray-700 italic">&ldquo;{bulletin.appreciation_generale}&rdquo;</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )

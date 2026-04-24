@@ -48,29 +48,32 @@ export default function ParentsPage() {
 
   const loadDashboard = useCallback(async (parentId: string) => {
     setDataLoading(true)
-    const { data: kids } = await supabase
-      .from('etudiants')
-      .select('id, nom, prenom, statut, classe_id')
-      .eq('parent_id', parentId)
+    try {
+      const { data: kids } = await supabase
+        .from('etudiants')
+        .select('id, nom, prenom, statut, classe_id')
+        .eq('parent_id', parentId)
 
-    const enfantsList = kids || []
-    setEnfants(enfantsList)
+      const enfantsList = kids || []
+      setEnfants(enfantsList)
 
-    if (enfantsList.length > 0) {
-      const ids = enfantsList.map(k => k.id)
-      const [{ data: pres }, { data: nts }, { data: pays }] = await Promise.all([
-        supabase.from('presences').select('id, etudiant_id, statut, date')
-          .in('etudiant_id', ids).order('date', { ascending: false }).limit(15),
-        supabase.from('notes').select('id, etudiant_id, valeur, type_eval, date')
-          .in('etudiant_id', ids).order('date', { ascending: false }).limit(15),
-        supabase.from('paiements').select('id, etudiant_id, montant, type, statut, date_paiement')
-          .in('etudiant_id', ids).order('date_paiement', { ascending: false }).limit(15),
-      ])
-      setPresences(pres || [])
-      setNotes(nts || [])
-      setPaiements(pays || [])
+      if (enfantsList.length > 0) {
+        const ids = enfantsList.map(k => k.id)
+        const [{ data: pres }, { data: nts }, { data: pays }] = await Promise.all([
+          supabase.from('presences').select('id, etudiant_id, statut, date')
+            .in('etudiant_id', ids).order('date', { ascending: false }).limit(15),
+          supabase.from('notes').select('id, etudiant_id, valeur, type_eval, date')
+            .in('etudiant_id', ids).order('date', { ascending: false }).limit(15),
+          supabase.from('paiements').select('id, etudiant_id, montant, type, statut, date_paiement')
+            .in('etudiant_id', ids).order('date_paiement', { ascending: false }).limit(15),
+        ])
+        setPresences(pres || [])
+        setNotes(nts || [])
+        setPaiements(pays || [])
+      }
+    } catch { /* ignore query errors */ } finally {
+      setDataLoading(false)
     }
-    setDataLoading(false)
   }, [])
 
   useEffect(() => {

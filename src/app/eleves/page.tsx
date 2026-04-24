@@ -96,53 +96,55 @@ export default function ElevesPage() {
 
   async function loadDashboard(u: Utilisateur) {
     setLoadingDash(true)
+    try {
+      const { data: etData } = await supabase
+        .from('etudiants')
+        .select('id, classe_id')
+        .eq('email', u.email)
+        .maybeSingle()
 
-    const { data: etData } = await supabase
-      .from('etudiants')
-      .select('id, classe_id')
-      .eq('email', u.email)
-      .maybeSingle()
+      if (!etData) return
+      setEtudiant(etData)
 
-    if (!etData) { setLoadingDash(false); return }
-    setEtudiant(etData)
+      const jobs = [
+        supabase.from('notes')
+          .select('id, valeur, type_eval, date, matieres(nom)')
+          .eq('etudiant_id', etData.id)
+          .order('date', { ascending: false })
+          .limit(6)
+          .then(({ data }) => setNotes((data as unknown as Note[]) || [])),
 
-    const jobs = [
-      supabase.from('notes')
-        .select('id, valeur, type_eval, date, matieres(nom)')
-        .eq('etudiant_id', etData.id)
-        .order('date', { ascending: false })
-        .limit(6)
-        .then(({ data }) => setNotes((data as unknown as Note[]) || [])),
+        supabase.from('presences')
+          .select('id, date, statut')
+          .eq('etudiant_id', etData.id)
+          .neq('statut', 'present')
+          .order('date', { ascending: false })
+          .limit(6)
+          .then(({ data }) => setAbsences(data || [])),
+      ]
 
-      supabase.from('presences')
-        .select('id, date, statut')
-        .eq('etudiant_id', etData.id)
-        .neq('statut', 'present')
-        .order('date', { ascending: false })
-        .limit(6)
-        .then(({ data }) => setAbsences(data || [])),
-    ]
+      if (etData.classe_id) {
+        jobs.push(
+          supabase.from('classes')
+            .select('id, nom, annee_scolaire')
+            .eq('id', etData.classe_id)
+            .maybeSingle()
+            .then(({ data }) => { if (data) setClasse(data) }),
 
-    if (etData.classe_id) {
-      jobs.push(
-        supabase.from('classes')
-          .select('id, nom, annee_scolaire')
-          .eq('id', etData.classe_id)
-          .maybeSingle()
-          .then(({ data }) => { if (data) setClasse(data) }),
+          supabase.from('cahier_textes')
+            .select('id, type, titre, contenu, date_limite, matieres(nom)')
+            .eq('classe_id', etData.classe_id)
+            .in('type', ['Devoir', 'Examen'])
+            .order('date_limite', { ascending: true, nullsFirst: false })
+            .limit(5)
+            .then(({ data }) => setDevoirs((data as unknown as Devoir[]) || []))
+        )
+      }
 
-        supabase.from('cahier_textes')
-          .select('id, type, titre, contenu, date_limite, matieres(nom)')
-          .eq('classe_id', etData.classe_id)
-          .in('type', ['Devoir', 'Examen'])
-          .order('date_limite', { ascending: true, nullsFirst: false })
-          .limit(5)
-          .then(({ data }) => setDevoirs((data as unknown as Devoir[]) || []))
-      )
+      await Promise.all(jobs)
+    } catch { /* ignore query errors */ } finally {
+      setLoadingDash(false)
     }
-
-    await Promise.all(jobs)
-    setLoadingDash(false)
   }
 
   function logout() {
