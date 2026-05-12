@@ -77,7 +77,7 @@ export default function FinancesPage() {
 
   // Auth
   const [accesRefuse, setAccesRefuse] = useState(false)
-  const [currentUser, setCurrentUser] = useState<{id:string;nom:string;prenom:string}|null>(null)
+  const [currentUser, setCurrentUser] = useState<{id:string;nom:string;prenom:string;role:string}|null>(null)
 
   // Info école (pour le PDF)
   const [ecoleInfo, setEcoleInfo] = useState({ nom_ecole: 'E.F.A.S.L.A', adresse: 'Loulouni, Mali', telephone: '79 25 92 22', logo_url: undefined as string|undefined })
@@ -89,7 +89,7 @@ export default function FinancesPage() {
       if (!u || !['admin', 'secretaire'].includes(u.role)) {
         setAccesRefuse(true)
       } else {
-        setCurrentUser({ id: u.id, nom: u.nom, prenom: u.prenom })
+        setCurrentUser({ id: u.id, nom: u.nom, prenom: u.prenom, role: u.role })
       }
     } catch { setAccesRefuse(true) }
   }, [])
@@ -424,7 +424,9 @@ export default function FinancesPage() {
           <span className="text-xl font-bold">Finances</span>
         </div>
         <div className="flex items-center gap-4">
-          <Link href="/admin/finances/parametres" className="text-indigo-200 hover:text-white text-sm">⚙️ Paramètres</Link>
+          {currentUser?.role === 'admin' && (
+            <Link href="/admin/finances/parametres" className="text-indigo-200 hover:text-white text-sm">⚙️ Paramètres</Link>
+          )}
           <Link href="/admin" className="text-indigo-200 hover:text-white text-sm">← Dashboard</Link>
         </div>
       </header>

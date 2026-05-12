@@ -24,7 +24,7 @@ export default function FinancesParametresPage() {
     try {
       const raw = localStorage.getItem('eduproof_user')
       const u = raw ? JSON.parse(raw) : null
-      if (!u || !['admin', 'secretaire'].includes(u.role)) setAccesRefuse(true)
+      if (!u || u.role !== 'admin') setAccesRefuse(true)
     } catch { setAccesRefuse(true) }
   }, [])
 
