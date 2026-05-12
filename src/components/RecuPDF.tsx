@@ -30,6 +30,14 @@ const S = StyleSheet.create({
     paddingHorizontal: 28,
     backgroundColor: C.white,
   },
+  watermark: {
+    position: 'absolute',
+    top: 197,
+    left: 110,
+    width: 200,
+    height: 200,
+    opacity: 0.07,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -142,6 +150,11 @@ export default function RecuPDF({ ecole, etudiant, paiement, bilan, recu_par }: 
   return (
     <Document>
       <Page size="A5" orientation="portrait" style={S.page}>
+
+        {/* ── Filigrane ── */}
+        {ecole.logo_url && (
+          <Image style={S.watermark} src={ecole.logo_url} />
+        )}
 
         {/* En-tête */}
         <View style={S.header}>

@@ -57,6 +57,15 @@ const S = StyleSheet.create({
     backgroundColor: C.white,
   },
 
+  watermark: {
+    position: 'absolute',
+    top: 281,
+    left: 157,
+    width: 280,
+    height: 280,
+    opacity: 0.07,
+  },
+
   /* ── En-tête 3 colonnes ── */
   header: {
     flexDirection: 'row',
@@ -272,6 +281,11 @@ export default function BulletinPDF({
   return (
     <Document>
       <Page size="A4" style={S.page}>
+
+        {/* ── Filigrane ── */}
+        {ecole.logo_url && (
+          <Image style={S.watermark} src={ecole.logo_url} />
+        )}
 
         {/* ── En-tête 3 colonnes ── */}
         <View style={S.header}>
