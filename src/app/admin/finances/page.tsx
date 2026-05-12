@@ -75,6 +75,12 @@ export default function FinancesPage() {
   const [saving, setSaving] = useState(false)
   const [warnDepassement, setWarnDepassement] = useState(false)
 
+  // Modal modification (admin)
+  const [showModalEdit, setShowModalEdit] = useState(false)
+  const [editingPaiement, setEditingPaiement] = useState<PaiementDetail | null>(null)
+  const [formEdit, setFormEdit] = useState({ montant: '', date_paiement: '', mode_paiement: 'Espèces', note: '' })
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+
   // Auth
   const [accesRefuse, setAccesRefuse] = useState(false)
   const [currentUser, setCurrentUser] = useState<{id:string;nom:string;prenom:string;role:string}|null>(null)
@@ -206,6 +212,66 @@ export default function FinancesPage() {
     }
   }
 
+  function afficherToast(msg: string, type: 'success' | 'error') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  function ouvrirModifierVersement(p: PaiementDetail) {
+    setEditingPaiement(p)
+    setFormEdit({ montant: String(p.montant), date_paiement: p.date_paiement, mode_paiement: p.mode_paiement || 'Espèces', note: p.note || '' })
+    setShowModalEdit(true)
+  }
+
+  async function sauvegarderModification() {
+    if (!editingPaiement || !selected) return
+    const montant = parseFloat(formEdit.montant)
+    if (!montant || montant <= 0) return
+    setSaving(true)
+    const { error } = await supabase.from('paiements').update({
+      montant,
+      date_paiement: formEdit.date_paiement,
+      mode_paiement: formEdit.mode_paiement,
+      note: formEdit.note || null,
+    }).eq('id', editingPaiement.id)
+    setSaving(false)
+    if (error) {
+      afficherToast('Erreur lors de la modification.', 'error')
+    } else {
+      const delta = montant - editingPaiement.montant
+      setSelected(prev => {
+        if (!prev) return prev
+        const newPaye = prev.total_paye + delta
+        const newReste = prev.total_du - newPaye
+        return { ...prev, total_paye: newPaye, reste: newReste, statut_paiement: newReste <= 0 ? 'solde' : newPaye > 0 ? 'partiel' : 'non_paye' }
+      })
+      setShowModalEdit(false)
+      setEditingPaiement(null)
+      afficherToast('Versement modifié avec succès.', 'success')
+      await loadGlobal()
+      await loadPaiementsEtudiant(selected.id)
+    }
+  }
+
+  async function supprimerVersement(p: PaiementDetail) {
+    if (!selected) return
+    if (!window.confirm(`Supprimer ce versement de ${p.montant.toLocaleString()} FCFA ?`)) return
+    const { error } = await supabase.from('paiements').delete().eq('id', p.id)
+    if (error) {
+      afficherToast('Erreur lors de la suppression.', 'error')
+    } else {
+      setSelected(prev => {
+        if (!prev) return prev
+        const newPaye = Math.max(0, prev.total_paye - p.montant)
+        const newReste = prev.total_du - newPaye
+        return { ...prev, total_paye: newPaye, reste: newReste, statut_paiement: newReste <= 0 ? 'solde' : newPaye > 0 ? 'partiel' : 'non_paye' }
+      })
+      afficherToast('Versement supprimé.', 'success')
+      await loadGlobal()
+      await loadPaiementsEtudiant(selected.id)
+    }
+  }
+
   /* ── Totaux globaux ── */
   const totalAttendu = etudiants.reduce((s, e) => s + e.total_du, 0)
   const totalEncaisse = etudiants.reduce((s, e) => s + e.total_paye, 0)
@@ -315,22 +381,40 @@ export default function FinancesPage() {
                         <td className="px-4 py-3 text-sm text-gray-500 max-w-[120px] truncate">{p.note || '—'}</td>
                         <td className="px-4 py-3 text-sm text-gray-500">{p.recu_par_nom}</td>
                         <td className="px-4 py-3">
-                          {p.numero_recu ? (
-                            <RecuDownloadButton
-                              fileName={`recu-${p.numero_recu}.pdf`}
-                              ecole={ecoleInfo}
-                              etudiant={{ nom: selected.nom, prenom: selected.prenom, classe: selected.classe_nom }}
-                              paiement={{
-                                numero_recu: p.numero_recu,
-                                date: p.date_paiement,
-                                montant_verse: p.montant,
-                                mode_paiement: p.mode_paiement || 'Espèces',
-                                note: p.note ?? undefined,
-                              }}
-                              bilan={{ total_du: selected.total_du, total_paye: selected.total_paye, reste: Math.max(0, selected.reste) }}
-                              recu_par={p.recu_par_nom}
-                            />
-                          ) : <span className="text-xs text-gray-300">—</span>}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {p.numero_recu ? (
+                              <RecuDownloadButton
+                                fileName={`recu-${p.numero_recu}.pdf`}
+                                ecole={ecoleInfo}
+                                etudiant={{ nom: selected.nom, prenom: selected.prenom, classe: selected.classe_nom }}
+                                paiement={{
+                                  numero_recu: p.numero_recu,
+                                  date: p.date_paiement,
+                                  montant_verse: p.montant,
+                                  mode_paiement: p.mode_paiement || 'Espèces',
+                                  note: p.note ?? undefined,
+                                }}
+                                bilan={{ total_du: selected.total_du, total_paye: selected.total_paye, reste: Math.max(0, selected.reste) }}
+                                recu_par={p.recu_par_nom}
+                              />
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                            {currentUser?.role === 'admin' && (
+                              <>
+                                <button
+                                  onClick={() => ouvrirModifierVersement(p)}
+                                  className="text-xs text-blue-600 border border-blue-200 px-2 py-1 rounded-lg hover:bg-blue-50 transition"
+                                >
+                                  Modifier
+                                </button>
+                                <button
+                                  onClick={() => supprimerVersement(p)}
+                                  className="text-xs text-red-600 border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50 transition"
+                                >
+                                  Supprimer
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -340,6 +424,79 @@ export default function FinancesPage() {
             )}
           </div>
         </div>
+
+        {/* Toast */}
+        {toast && (
+          <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white transition-all ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+            {toast.type === 'success' ? '✅' : '❌'} {toast.msg}
+          </div>
+        )}
+
+        {/* Modal modification (admin) */}
+        {showModalEdit && editingPaiement && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Modifier le versement</h2>
+              <p className="text-sm text-gray-500 mb-4">Ancien montant : {editingPaiement.montant.toLocaleString()} FCFA</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Montant (FCFA)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formEdit.montant}
+                    onChange={e => setFormEdit(f => ({ ...f, montant: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Date</label>
+                  <input
+                    type="date"
+                    value={formEdit.date_paiement}
+                    onChange={e => setFormEdit(f => ({ ...f, date_paiement: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Mode de paiement</label>
+                  <select
+                    value={formEdit.mode_paiement}
+                    onChange={e => setFormEdit(f => ({ ...f, mode_paiement: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  >
+                    {MODES.map(m => <option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Note (optionnel)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: correction saisie"
+                    value={formEdit.note}
+                    onChange={e => setFormEdit(f => ({ ...f, note: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button
+                  onClick={sauvegarderModification}
+                  disabled={saving || !formEdit.montant}
+                  className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium transition"
+                >
+                  {saving ? 'Enregistrement...' : 'Sauvegarder'}
+                </button>
+                <button
+                  onClick={() => { setShowModalEdit(false); setEditingPaiement(null) }}
+                  className="flex-1 border py-2 rounded-lg hover:bg-gray-50 text-sm transition"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal versement */}
         {showModal && (
