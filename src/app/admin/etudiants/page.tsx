@@ -3,6 +3,13 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 
+type Classe = {
+  id: string
+  nom: string
+  niveau: string
+  annee_scolaire: string
+}
+
 type Etudiant = {
   id: string
   nom: string
@@ -11,29 +18,50 @@ type Etudiant = {
   whatsapp: string
   statut: string
   created_at: string
+  classe_id: string | null
+  classes: { nom: string } | null
 }
 
 export default function EtudiantsPage() {
   const [etudiants, setEtudiants] = useState<Etudiant[]>([])
+  const [classes, setClasses] = useState<Classe[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ nom: "", prenom: "", email: "", whatsapp: "" })
+  const [form, setForm] = useState({ nom: "", prenom: "", email: "", whatsapp: "", classe_id: "" })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { loadEtudiants() }, [])
+  useEffect(() => {
+    loadClasses()
+    loadEtudiants()
+  }, [])
+
+  async function loadClasses() {
+    const { data } = await supabase.from('classes').select('*').order('nom')
+    setClasses(data || [])
+  }
 
   async function loadEtudiants() {
     setLoading(true)
-    const { data } = await supabase.from('etudiants').select('*').order('created_at', { ascending: false })
-    setEtudiants(data || [])
+    const { data } = await supabase
+      .from('etudiants')
+      .select('*, classes(nom)')
+      .order('created_at', { ascending: false })
+    setEtudiants((data as Etudiant[]) || [])
     setLoading(false)
   }
 
   async function addEtudiant() {
-    if (!form.nom || !form.prenom) return
+    if (!form.nom || !form.prenom || !form.classe_id) return
     setSaving(true)
-    await supabase.from('etudiants').insert([{ ...form, statut: 'actif' }])
-    setForm({ nom: "", prenom: "", email: "", whatsapp: "" })
+    await supabase.from('etudiants').insert([{
+      nom: form.nom,
+      prenom: form.prenom,
+      email: form.email,
+      whatsapp: form.whatsapp,
+      classe_id: form.classe_id,
+      statut: 'actif',
+    }])
+    setForm({ nom: "", prenom: "", email: "", whatsapp: "", classe_id: "" })
     setShowForm(false)
     setSaving(false)
     loadEtudiants()
@@ -76,9 +104,26 @@ export default function EtudiantsPage() {
                 className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <input placeholder="WhatsApp" value={form.whatsapp} onChange={e => setForm({...form, whatsapp: e.target.value})}
                 className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Classe *</label>
+                <select
+                  value={form.classe_id}
+                  onChange={e => setForm({...form, classe_id: e.target.value})}
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-700"
+                >
+                  <option value="">Sélectionner une classe</option>
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.nom} — {c.niveau} ({c.annee_scolaire})</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 mt-4">
-              <button onClick={addEtudiant} disabled={saving} className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              <button
+                onClick={addEtudiant}
+                disabled={saving || !form.nom || !form.prenom || !form.classe_id}
+                className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
                 {saving ? "Enregistrement..." : "Enregistrer"}
               </button>
               <button onClick={() => setShowForm(false)} className="w-full sm:w-auto border px-6 py-2 rounded-lg hover:bg-gray-50">Annuler</button>
@@ -96,11 +141,12 @@ export default function EtudiantsPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+            <table className="w-full min-w-[700px]">
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Nom</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Prénom</th>
+                  <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Classe</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Email</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">WhatsApp</th>
                   <th className="text-left px-6 py-3 text-sm font-semibold text-gray-600">Statut</th>
@@ -112,6 +158,7 @@ export default function EtudiantsPage() {
                   <tr key={e.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                     <td className="px-6 py-4 font-medium text-gray-900">{e.nom}</td>
                     <td className="px-6 py-4 text-gray-700">{e.prenom}</td>
+                    <td className="px-6 py-4 text-gray-700">{e.classes?.nom || "—"}</td>
                     <td className="px-6 py-4 text-gray-500">{e.email || "—"}</td>
                     <td className="px-6 py-4 text-gray-500">{e.whatsapp || "—"}</td>
                     <td className="px-6 py-4">
